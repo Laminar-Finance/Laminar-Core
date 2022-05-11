@@ -1,18 +1,64 @@
 const { expect } = require("chai");
-const { ethers } = require("hardhat");
+const { ethers, web3 } = require("hardhat");
+const { Framework } = require("@superfluid-finance/sdk-core");
+const deployFramework = require("@superfluid-finance/ethereum-contracts/scripts/deploy-framework");
+const deployTestToken = require("@superfluid-finance/ethereum-contracts/scripts/deploy-test-token");
+const deploySuperToken = require("@superfluid-finance/ethereum-contracts/scripts/deploy-super-token");
 
-describe("ClientDatabase", function () {
+const provider = web3;
+
+const errorHandler = (err) => {
+  if (err) throw err;
+};
+
+describe("PaymentReceiver", function () {
   let accounts;
   let admin;
+
+  let sf;
+  let daix;
 
   before(async () => {
     accounts = await ethers.getSigners();
     admin = accounts[0];
+
+    await deployFramework(errorHandler, {
+      web3,
+      from: admin.address,
+    });
+
+    const fDAIAddress = await deployTestToken(errorHandler, [":", "fDAI"], {
+      web3,
+      from: admin.address,
+    });
+
+    // deploy a fake erc20 wrapper super token around the fDAI token
+    const fDAIxAddress = await deploySuperToken(errorHandler, [":", "fDAI"], {
+      web3,
+      from: admin.address,
+    });
+
+    console.log("fDAIxAddress: ", fDAIxAddress);
+    console.log("fDAIAddress: ", fDAIAddress);
+
+    sf = await Framework.create({
+      networkName: "custom",
+      provider,
+      dataMode: "WEB3_ONLY",
+      resolverAddress: process.env.RESOLVER_ADDRESS,
+      protocolReleaseVersion: "test",
+    });
+
+    daix = await sf.loadSuperToken("fDAIx");
   });
 
-  it("Should generate and store unique client ids", async function () {
-    const PR = await ethers.getContractFactory("ClientDatabase");
-    const pr = await PR.deploy();
+  it("Should create payment flow on check-in", async function () {
+    const PR = await ethers.getContractFactory("PaymentReceiver");
+    const pr = await PR.deploy(
+      sf.settings.config.hostAddress,
+      sf.settings.config.cfaV1Address,
+      daix.address
+    );
     await pr.deployed();
 
     let clients = await pr.getClients(admin.address);
@@ -29,40 +75,5 @@ describe("ClientDatabase", function () {
     clients = await pr.getClients(admin.address);
     expect(clients.length).to.equal(4);
     expect(new Set(clients).size).to.equal(4);
-  });
-
-  it("Should prevent more than 128 client ids per address", async function () {
-    const PR = await ethers.getContractFactory("ClientDatabase");
-    const pr = await PR.deploy();
-    await pr.deployed();
-
-    for (let index = 0; index < 128; index++) {
-      await pr.addClient();
-    }
-
-    let clients = await pr.getClients(admin.address);
-    expect(clients.length).to.equal(128);
-
-    await pr.addClient();
-    await pr.addClient();
-    await pr.addClient();
-
-    clients = await pr.getClients(admin.address);
-    expect(clients.length).to.equal(128);
-  });
-
-  it("Should show associated address when given a client id", async function () {
-    const PR = await ethers.getContractFactory("ClientDatabase");
-    const pr = await PR.deploy();
-    await pr.deployed();
-
-    await pr.addClient();
-    await pr.addClient();
-    const clients = await pr.getClients(admin.address);
-    let clientAddress = await pr.getClient(clients[0]);
-    expect(clientAddress).to.equal(admin.address);
-
-    clientAddress = await pr.getClient(clients[1]);
-    expect(clientAddress).to.equal(admin.address);
   });
 });

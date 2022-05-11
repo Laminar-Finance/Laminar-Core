@@ -56,6 +56,26 @@ contract ClientDatabase {
 }
 
 contract PaymentReceiver is IPaymentReceiver, ClientDatabase {
+    ISuperfluid private _host; // host
+    IConstantFlowAgreementV1 private _cfa; // the stored constant flow agreement class address
+
+    ISuperToken public _acceptedToken; // accepted token
+
+     constructor(
+        ISuperfluid host,
+        IConstantFlowAgreementV1 cfa,
+        ISuperToken acceptedToken
+    ) {
+        _host = host;
+        _cfa = cfa;
+        _acceptedToken = acceptedToken;
+
+        assert(address(_host) != address(0));
+        assert(address(_cfa) != address(0));
+        assert(address(_acceptedToken) != address(0));
+    }
+
+ 
     function checkIn(uint256 clientId) external {
 
     }
