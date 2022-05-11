@@ -50,7 +50,7 @@ contract ClientDatabase {
         return _varibleClientIds;
     }
 
-    function getClient(uint256 _clientId) external view returns (address) {
+    function getAddress(uint256 _clientId) public view returns (address) {
         return clientIds[_clientId];
     }
 }
@@ -59,29 +59,42 @@ contract PaymentReceiver is IPaymentReceiver, ClientDatabase {
     ISuperfluid private _host; // host
     IConstantFlowAgreementV1 private _cfa; // the stored constant flow agreement class address
 
-    ISuperToken public _acceptedToken; // accepted token
-
      constructor(
         ISuperfluid host,
-        IConstantFlowAgreementV1 cfa,
-        ISuperToken acceptedToken
+        IConstantFlowAgreementV1 cfa
     ) {
         _host = host;
         _cfa = cfa;
-        _acceptedToken = acceptedToken;
 
         assert(address(_host) != address(0));
         assert(address(_cfa) != address(0));
-        assert(address(_acceptedToken) != address(0));
     }
 
  
-    function checkIn(uint256 clientId) external {
-
+    function checkIn(uint256 clientId, ISuperToken token) external {
+        address _addr = getAddress(clientId);
+        _createFlow(_addr, 1, token);
     }
 
     function checkOut(uint256 clientId) external {
 
+    }
+
+
+    function _createFlow(address to, int96 flowRate, ISuperToken _acceptedToken) internal {
+        if (to == address(this) || to == address(0)) return;
+
+        _host.callAgreement(
+            _cfa,
+            abi.encodeWithSelector(
+                _cfa.createFlow.selector,
+                _acceptedToken,
+                to,
+                flowRate,
+                new bytes(0)
+            ),
+            "0x"
+        );
     }
 
 }

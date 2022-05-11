@@ -52,12 +52,11 @@ describe("PaymentReceiver", function () {
     daix = await sf.loadSuperToken("fDAIx");
   });
 
-  it("Should create payment flow on check-in", async function () {
+  it("Should fail to check in if the signer has no money", async function () {
     const PR = await ethers.getContractFactory("PaymentReceiver");
     const pr = await PR.deploy(
       sf.settings.config.hostAddress,
-      sf.settings.config.cfaV1Address,
-      daix.address
+      sf.settings.config.cfaV1Address
     );
     await pr.deployed();
 
@@ -65,15 +64,10 @@ describe("PaymentReceiver", function () {
     expect(clients.length).to.equal(0);
 
     await pr.addClient();
-    await pr.addClient();
-    await pr.addClient();
 
     clients = await pr.getClients(admin.address);
-    expect(clients.length).to.equal(3);
+    const clientId = clients[0];
 
-    await pr.addClient();
-    clients = await pr.getClients(admin.address);
-    expect(clients.length).to.equal(4);
-    expect(new Set(clients).size).to.equal(4);
+    await expect(pr.checkIn(clientId, daix.address)).to.be.reverted;
   });
 });

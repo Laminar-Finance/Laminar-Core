@@ -59,10 +59,10 @@ describe("ClientDatabase", function () {
     await pr.addClient();
     await pr.addClient();
     const clients = await pr.getClients(admin.address);
-    let clientAddress = await pr.getClient(clients[0]);
+    let clientAddress = await pr.getAddress(clients[0]);
     expect(clientAddress).to.equal(admin.address);
 
-    clientAddress = await pr.getClient(clients[1]);
+    clientAddress = await pr.getAddress(clients[1]);
     expect(clientAddress).to.equal(admin.address);
   });
 });
