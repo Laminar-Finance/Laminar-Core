@@ -2,6 +2,8 @@ pragma solidity ^0.8.11;
 
 import "hardhat/console.sol";
 import "./IPaymentReceiver.sol";
+import {ISuperfluid, ISuperToken, ISuperApp} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+import {IConstantFlowAgreementV1} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
 
 contract ClientDatabase {
     uint private nextId;
