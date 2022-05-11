@@ -52,8 +52,6 @@ contract ClientDatabase {
 }
 
 contract PaymentReceiver is IPaymentReceiver, ClientDatabase {
-    
-
     function checkIn(uint256 clientId) external {
 
     }
