@@ -4,7 +4,7 @@ import "hardhat/console.sol";
 import "./IPaymentReceiver.sol";
 
 contract ClientDatabase {
-    uint private nonce;
+    uint private nextId;
     mapping (uint256 => address) private clientIds;
     uint256[] private idList;
     // An address cannot have more than 128 associated clients.
@@ -13,13 +13,15 @@ contract ClientDatabase {
     constructor() {}
 
     function addClient() external returns (uint256) {
-        uint256 _clientId = uint256(keccak256(abi.encode(block.number, msg.data, nonce++)));
+        uint256 _id = nextId;
 
-        clientIds[_clientId] = msg.sender;
+        nextId++;
 
-        idList.push(_clientId);
+        clientIds[_id] = msg.sender;
 
-        return _clientId;
+        idList.push(_id);
+
+        return _id;
     }
 
     /**
