@@ -81,27 +81,6 @@ describe("PaymentReceiver", function () {
     console.log("daix bal for acct 0: ", daixBal);
   });
 
-  // it("Should fail to check in if the signer has no money", async function () {
-    // const PR = await ethers.getContractFactory("PaymentReceiver");
-    // const pr = await PR.deploy(
-    //   sf.settings.config.hostAddress,
-    //   sf.settings.config.cfaV1Address
-    // );
-    // await pr.deployed();
-
-    // let clients = await pr.getClients(admin.address);
-    // expect(clients.length).to.equal(0);
-
-    // await pr.addClient();
-
-    // clients = await pr.getClients(admin.address);
-    // const clientId = clients[0];
-
-    // const antilopeConnection = pr.connect(antilope);
-
-    // await expect(antilopeConnection.checkIn(clientId, daix.address)).to.be.reverted;
-  // });
-
   it.only("Should create a flow upon check in", async function () {
     const PR = await ethers.getContractFactory("PaymentReceiver");
     const pr = await PR.deploy(
@@ -110,68 +89,17 @@ describe("PaymentReceiver", function () {
     );
     await pr.deployed();
 
-    console.log(sf);
-    console.log("contract addr", pr.address);
-    console.log("host addr", sf.settings.config.hostAddress);
-    console.log("flow contract addr", sf.settings.config.cfaV1Address);
-    console.log("dai addr", daix.address);
-
-    // console.log(sf.cfaV1.contract);
-
-    let q = daix.authorizeFlowOperatorWithFullControl({
-      flowOperator: sf.settings.config.cfaV1Address,
-    });
-    console.log("auth flow operation outcome: ", q);
-    let result = await q.exec(admin);
-    console.log("result", result);
-    let final = await result.wait();
-    console.log("final", final);
-
-    q = daix.authorizeFlowOperatorWithFullControl({
+    // Authorize the deployed PaymentReceiver contract as a superfluid operator
+    const q = daix.authorizeFlowOperatorWithFullControl({
       flowOperator: pr.address,
     });
-    console.log("auth flow operation outcome: ", q);
-    result = await q.exec(admin);
-    console.log("result", result);
-    final = await result.wait();
-    console.log("final", final);
-
-    q = daix.authorizeFlowOperatorWithFullControl({
-      flowOperator: sf.settings.config.hostAddress,
-    });
-    console.log("auth flow operation outcome: ", q);
-    result = await q.exec(admin);
-    console.log("result", result);
-    final = await result.wait();
-    console.log("final", final);
-
-    // q = await daix.authorizeFlowOperatorWithFullControl({
-    //   flowOperator: sf.settings.config.cfaV1Address,
-    // });
-    // console.log("auth flow operation outcome: ", q);
-    // await q.exec(daix);
-    // q = await daix.authorizeFlowOperatorWithFullControl({
-    //   flowOperator: pr.address,
-    // });
-    // console.log("auth flow operation outcome: ", q);
-    // await q.exec(daix);
-
-    console.log("authorized");
+    const result = await q.exec(admin);
+    await result.wait();
 
     const antPR = pr.connect(ant);
     await antPR.addClient();
 
-    console.log("admin adddress", admin.address);
-
-    const daixBal = await daix.balanceOf({
-      account: admin.address,
-      providerOrSigner: admin,
-    });
-    console.log("daix bal for acct 0: ", daixBal);
-
     const antClientId = (await antPR.getClients(ant.address))[0];
     await pr.checkIn(antClientId, daix.address);
-
-    // await expect(pr.checkIn(antilopeClientId, daix.address)).not.to.be.reverted;
   });
 });

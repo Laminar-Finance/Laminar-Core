@@ -69,7 +69,6 @@ contract PaymentReceiver is IPaymentReceiver, ClientDatabase {
         assert(address(_host) != address(0));
         assert(address(_cfa) != address(0));
     }
-
  
     function checkIn(uint256 clientId, ISuperToken token) external {
         address _addr = getAddress(clientId);
@@ -81,13 +80,13 @@ contract PaymentReceiver is IPaymentReceiver, ClientDatabase {
 
     }
 
-
     function _createFlow(address to, int96 flowRate, ISuperToken _acceptedToken) internal {
         if (to == address(this) || to == address(0)) return;
 
-        console.log("contract address below");
-        console.logAddress(address(this));
-
+        /**
+         * @dev flows between two different addreses can only be created by a contract
+         * with superfluid operator permissions. 
+         */
         _host.callAgreement(
             _cfa,
             abi.encodeWithSelector(
