@@ -60,7 +60,10 @@ contract ClientDatabase {
 
 contract PaymentReceiver is IPaymentReceiver, ClientDatabase {
     ISuperfluid private _host; // host
-    IConstantFlowAgreementV1 private _cfa; // the stored constant flow agreement class address
+    IConstantFlowAgreementV1 private _cfa; // the stored constant flow agreement class 
+    
+    event CheckIn(address _checkee, uint256 _clientId, uint96 _flowRate, ISuperToken token);
+    event CheckOut(address _checkee, uint256 _clientId);
 
      constructor(
         ISuperfluid host,
@@ -73,14 +76,15 @@ contract PaymentReceiver is IPaymentReceiver, ClientDatabase {
         assert(address(_cfa) != address(0));
     }
  
-    function checkIn(uint256 clientId, ISuperToken token) external {
-        address _addr = getAddress(clientId);
+    function checkIn(uint256 _clientId, ISuperToken _token) external {
+        address _addr = getAddress(_clientId);
  
-        _createFlow(_addr, 1, token);
+        _createFlow(_addr, 1, _token);
+        emit CheckIn(msg.sender, _clientId, 1, _token);
     }
 
-    function checkOut(uint256 clientId, ISuperToken _token) external {
-        address _addr = getAddress(clientId);
+    function checkOut(uint256 _clientId, ISuperToken _token) external {
+        address _addr = getAddress(_clientId);
 
         _host.callAgreement(
             _cfa,
@@ -95,8 +99,8 @@ contract PaymentReceiver is IPaymentReceiver, ClientDatabase {
         );
     }
 
-    function _createFlow(address to, int96 flowRate, ISuperToken _token) internal {
-        if (to == address(this) || to == address(0)) return;
+    function _createFlow(address _to, int96 _flowRate, ISuperToken _token) internal {
+        if (_to == address(this) || _to == address(0)) return;
 
         /**
          * @dev flows between two different addreses can only be created by a contract
@@ -108,8 +112,8 @@ contract PaymentReceiver is IPaymentReceiver, ClientDatabase {
                 _cfa.createFlowByOperator.selector,
                 _token,
                 msg.sender,
-                to,
-                flowRate,
+                _to,
+                _flowRate,
                 new bytes(0)
             ),
             "0x"

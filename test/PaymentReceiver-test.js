@@ -12,7 +12,7 @@ const errorHandler = (err) => {
   if (err) throw err;
 };
 
-describe.only("PaymentReceiver", function () {
+describe("PaymentReceiver", function () {
   let accounts;
   let admin;
   let ant;
@@ -128,7 +128,18 @@ describe.only("PaymentReceiver", function () {
     await pr.checkOut(antClientId, daix.address);
   });
 
-  it.only("Should remove existing flows on check out", async function () {
+  it.only("Should emit a CheckIn and CheckOut events", async function () {
+    const antPR = pr.connect(ant);
+    await antPR.addClient();
+
+    const antClientId = (await antPR.getClients(ant.address))[0];
+    await expect(pr.checkIn(antClientId, daix.address))
+      .to.emit(pr, "CheckIn")
+      .withArgs(admin.address, antClientId, 1, daix.address);
+    // await expect(antPR.checkOut(antClientId, daix.address)).to.emit(pr, "CheckOut");
+  });
+
+  it("Should remove existing flows on check out", async function () {
     const beetlePR = pr.connect(beetle);
     await beetlePR.addClient();
     const beetleClientId = (await beetlePR.getClients(beetle.address))[0];
