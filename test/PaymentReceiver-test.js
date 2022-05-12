@@ -81,7 +81,7 @@ describe("PaymentReceiver", function () {
     console.log("daix bal for acct 0: ", daixBal);
   });
 
-  it.only("Should create a flow upon check in", async function () {
+  it("Should create a flow upon check in", async function () {
     const PR = await ethers.getContractFactory("PaymentReceiver");
     const pr = await PR.deploy(
       sf.settings.config.hostAddress,
