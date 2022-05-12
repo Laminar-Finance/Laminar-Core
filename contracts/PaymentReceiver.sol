@@ -86,13 +86,18 @@ contract PaymentReceiver is IPaymentReceiver, ClientDatabase {
     function checkOut(uint256 _clientId, ISuperToken _token) external {
         address _addr = getAddress(_clientId);
 
+        _deleteFlow(_addr, _token);
+        emit CheckOut(msg.sender, _clientId);
+    }
+
+    function _deleteFlow(address _to, ISuperToken _token) internal {
         _host.callAgreement(
             _cfa,
             abi.encodeWithSelector(
                 _cfa.deleteFlowByOperator.selector,
                 _token,
                 msg.sender,
-                _addr,
+                _to,
                 new bytes(0)
             ),
             "0x"

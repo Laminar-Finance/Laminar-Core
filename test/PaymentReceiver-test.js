@@ -128,7 +128,7 @@ describe("PaymentReceiver", function () {
     await pr.checkOut(antClientId, daix.address);
   });
 
-  it.only("Should emit a CheckIn and CheckOut events", async function () {
+  it("Should emit a CheckIn and CheckOut events", async function () {
     const antPR = pr.connect(ant);
     await antPR.addClient();
 
@@ -136,7 +136,9 @@ describe("PaymentReceiver", function () {
     await expect(pr.checkIn(antClientId, daix.address))
       .to.emit(pr, "CheckIn")
       .withArgs(admin.address, antClientId, 1, daix.address);
-    // await expect(antPR.checkOut(antClientId, daix.address)).to.emit(pr, "CheckOut");
+    await expect(pr.checkOut(antClientId, daix.address))
+      .to.emit(pr, "CheckOut")
+      .withArgs(admin.address, antClientId);
   });
 
   it("Should remove existing flows on check out", async function () {
