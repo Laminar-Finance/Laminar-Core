@@ -89,11 +89,19 @@ describe("PaymentReceiver", function () {
     );
     await pr.deployed();
 
+    let flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: ant.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("0");
+
     // Authorize the deployed PaymentReceiver contract as a superfluid operator
-    const q = daix.authorizeFlowOperatorWithFullControl({
+    const transaction = daix.authorizeFlowOperatorWithFullControl({
       flowOperator: pr.address,
     });
-    const result = await q.exec(admin);
+    const result = await transaction.exec(admin);
     await result.wait();
 
     const antPR = pr.connect(ant);
@@ -101,5 +109,13 @@ describe("PaymentReceiver", function () {
 
     const antClientId = (await antPR.getClients(ant.address))[0];
     await pr.checkIn(antClientId, daix.address);
+
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: ant.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("1");
   });
 });
