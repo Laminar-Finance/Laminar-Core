@@ -113,9 +113,9 @@ describe("PaymentReceiver", function () {
     expect(flow.flowRate).to.equal("0");
 
     const antPR = pr.connect(ant);
-    await antPR.addClient();
+    await antPR.addGateway();
 
-    const antClientId = (await antPR.getClients(ant.address))[0];
+    const antClientId = (await antPR.getGateway(ant.address))[0];
     await pr.checkIn(antClientId, daix.address);
 
     flow = await sf.cfaV1.getFlow({
@@ -130,9 +130,9 @@ describe("PaymentReceiver", function () {
 
   it("Should emit a CheckIn and CheckOut events", async function () {
     const antPR = pr.connect(ant);
-    await antPR.addClient();
+    await antPR.addGateway();
 
-    const antClientId = (await antPR.getClients(ant.address))[0];
+    const antClientId = (await antPR.getGateway(ant.address))[0];
     await expect(pr.checkIn(antClientId, daix.address))
       .to.emit(pr, "CheckIn")
       .withArgs(admin.address, antClientId, 1, daix.address);
@@ -143,13 +143,13 @@ describe("PaymentReceiver", function () {
 
   it("Should remove existing flows on check out", async function () {
     const beetlePR = pr.connect(beetle);
-    await beetlePR.addClient();
-    const beetleClientId = (await beetlePR.getClients(beetle.address))[0];
+    await beetlePR.addGateway();
+    const beetleClientId = (await beetlePR.getGateway(beetle.address))[0];
     await pr.checkIn(beetleClientId, daix.address);
 
     const criketPR = pr.connect(cricket);
-    await criketPR.addClient();
-    const cricketClientId = (await beetlePR.getClients(cricket.address))[0];
+    await criketPR.addGateway();
+    const cricketClientId = (await beetlePR.getGateway(cricket.address))[0];
     await pr.checkIn(cricketClientId, daix.address);
 
     let flow = await sf.cfaV1.getFlow({
