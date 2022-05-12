@@ -79,11 +79,23 @@ contract PaymentReceiver is IPaymentReceiver, ClientDatabase {
         _createFlow(_addr, 1, token);
     }
 
-    function checkOut(uint256 clientId) external {
+    function checkOut(uint256 clientId, ISuperToken _token) external {
+        address _addr = getAddress(clientId);
 
+        _host.callAgreement(
+            _cfa,
+            abi.encodeWithSelector(
+                _cfa.deleteFlowByOperator.selector,
+                _token,
+                msg.sender,
+                _addr,
+                new bytes(0)
+            ),
+            "0x"
+        );
     }
 
-    function _createFlow(address to, int96 flowRate, ISuperToken _acceptedToken) internal {
+    function _createFlow(address to, int96 flowRate, ISuperToken _token) internal {
         if (to == address(this) || to == address(0)) return;
 
         /**
@@ -94,7 +106,7 @@ contract PaymentReceiver is IPaymentReceiver, ClientDatabase {
             _cfa,
             abi.encodeWithSelector(
                 _cfa.createFlowByOperator.selector,
-                _acceptedToken,
+                _token,
                 msg.sender,
                 to,
                 flowRate,

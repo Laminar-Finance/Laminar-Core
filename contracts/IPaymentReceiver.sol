@@ -13,5 +13,5 @@ interface IPaymentReceiver {
     /**
      * @dev Check out of the client and stop streaming payment
      */
-    function checkOut(uint256 clientId) external;
+    function checkOut(uint256 clientId, ISuperToken token) external;
 }

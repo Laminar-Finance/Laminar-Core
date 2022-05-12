@@ -12,19 +12,26 @@ const errorHandler = (err) => {
   if (err) throw err;
 };
 
-describe("PaymentReceiver", function () {
+describe.only("PaymentReceiver", function () {
   let accounts;
   let admin;
   let ant;
+  let beetle;
+  let cricket;
 
   let sf;
   let dai;
   let daix;
 
+  let PR;
+  let pr;
+
   before(async () => {
     accounts = await ethers.getSigners();
     admin = accounts[0];
     ant = accounts[1];
+    beetle = accounts[2];
+    cricket = accounts[3];
 
     await deployFramework(errorHandler, {
       web3,
@@ -73,7 +80,6 @@ describe("PaymentReceiver", function () {
     });
 
     await daixUpgradeOperation.exec(admin);
-
     const daixBal = await daix.balanceOf({
       account: admin.address,
       providerOrSigner: admin,
@@ -81,21 +87,13 @@ describe("PaymentReceiver", function () {
     console.log("daix bal for acct 0: ", daixBal);
   });
 
-  it("Should create a flow upon check in", async function () {
-    const PR = await ethers.getContractFactory("PaymentReceiver");
-    const pr = await PR.deploy(
+  beforeEach(async function () {
+    PR = await ethers.getContractFactory("PaymentReceiver");
+    pr = await PR.deploy(
       sf.settings.config.hostAddress,
       sf.settings.config.cfaV1Address
     );
     await pr.deployed();
-
-    let flow = await sf.cfaV1.getFlow({
-      superToken: daix.address,
-      sender: admin.address,
-      receiver: ant.address,
-      providerOrSigner: admin,
-    });
-    expect(flow.flowRate).to.equal("0");
 
     // Authorize the deployed PaymentReceiver contract as a superfluid operator
     const transaction = daix.authorizeFlowOperatorWithFullControl({
@@ -103,6 +101,16 @@ describe("PaymentReceiver", function () {
     });
     const result = await transaction.exec(admin);
     await result.wait();
+  });
+
+  it("Should create a flow upon check in", async function () {
+    let flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: ant.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("0");
 
     const antPR = pr.connect(ant);
     await antPR.addClient();
@@ -117,5 +125,45 @@ describe("PaymentReceiver", function () {
       providerOrSigner: admin,
     });
     expect(flow.flowRate).to.equal("1");
+    await pr.checkOut(antClientId, daix.address);
+  });
+
+  it.only("Should remove existing flows on check out", async function () {
+    const beetlePR = pr.connect(beetle);
+    await beetlePR.addClient();
+    const beetleClientId = (await beetlePR.getClients(beetle.address))[0];
+    await pr.checkIn(beetleClientId, daix.address);
+
+    const criketPR = pr.connect(cricket);
+    await criketPR.addClient();
+    const cricketClientId = (await beetlePR.getClients(cricket.address))[0];
+    await pr.checkIn(cricketClientId, daix.address);
+
+    let flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: beetle.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("1");
+
+    // This should not effect the beetle's flow.
+    await pr.checkOut(cricketClientId, daix.address);
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: beetle.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("1");
+
+    await pr.checkOut(beetleClientId, daix.address);
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: beetle.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("0");
   });
 });
