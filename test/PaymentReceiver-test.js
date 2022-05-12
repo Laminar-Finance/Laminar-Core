@@ -1,6 +1,7 @@
 const { expect } = require("chai");
 const { ethers, web3 } = require("hardhat");
-const { Framework } = require("@superfluid-finance/sdk-core");
+const { Framework, ConstantFlowAgreementV1 } = require("@superfluid-finance/sdk-core");
+const daiABI = require("./abis/fDAIABI");
 const deployFramework = require("@superfluid-finance/ethereum-contracts/scripts/deploy-framework");
 const deployTestToken = require("@superfluid-finance/ethereum-contracts/scripts/deploy-test-token");
 const deploySuperToken = require("@superfluid-finance/ethereum-contracts/scripts/deploy-super-token");
@@ -14,13 +15,16 @@ const errorHandler = (err) => {
 describe("PaymentReceiver", function () {
   let accounts;
   let admin;
+  let ant;
 
   let sf;
+  let dai;
   let daix;
 
   before(async () => {
     accounts = await ethers.getSigners();
     admin = accounts[0];
+    ant = accounts[1];
 
     await deployFramework(errorHandler, {
       web3,
@@ -50,9 +54,55 @@ describe("PaymentReceiver", function () {
     });
 
     daix = await sf.loadSuperToken("fDAIx");
+
+    const daiAddress = daix.underlyingToken.address;
+    dai = new ethers.Contract(daiAddress, daiABI, admin);
+
+    const appInitialBalance = await daix.balanceOf({
+      account: admin.address,
+      providerOrSigner: admin,
+    });
+
+    console.log("appInitialBalance: ", appInitialBalance); // initial balance of the app is 0
+
+    await dai.mint(admin.address, ethers.utils.parseEther("1000"));
+    await dai.approve(daix.address, ethers.utils.parseEther("1000"));
+
+    const daixUpgradeOperation = daix.upgrade({
+      amount: ethers.utils.parseEther("1000"),
+    });
+
+    await daixUpgradeOperation.exec(admin);
+
+    const daixBal = await daix.balanceOf({
+      account: admin.address,
+      providerOrSigner: admin,
+    });
+    console.log("daix bal for acct 0: ", daixBal);
   });
 
-  it("Should fail to check in if the signer has no money", async function () {
+  // it("Should fail to check in if the signer has no money", async function () {
+    // const PR = await ethers.getContractFactory("PaymentReceiver");
+    // const pr = await PR.deploy(
+    //   sf.settings.config.hostAddress,
+    //   sf.settings.config.cfaV1Address
+    // );
+    // await pr.deployed();
+
+    // let clients = await pr.getClients(admin.address);
+    // expect(clients.length).to.equal(0);
+
+    // await pr.addClient();
+
+    // clients = await pr.getClients(admin.address);
+    // const clientId = clients[0];
+
+    // const antilopeConnection = pr.connect(antilope);
+
+    // await expect(antilopeConnection.checkIn(clientId, daix.address)).to.be.reverted;
+  // });
+
+  it.only("Should create a flow upon check in", async function () {
     const PR = await ethers.getContractFactory("PaymentReceiver");
     const pr = await PR.deploy(
       sf.settings.config.hostAddress,
@@ -60,14 +110,68 @@ describe("PaymentReceiver", function () {
     );
     await pr.deployed();
 
-    let clients = await pr.getClients(admin.address);
-    expect(clients.length).to.equal(0);
+    console.log(sf);
+    console.log("contract addr", pr.address);
+    console.log("host addr", sf.settings.config.hostAddress);
+    console.log("flow contract addr", sf.settings.config.cfaV1Address);
+    console.log("dai addr", daix.address);
 
-    await pr.addClient();
+    // console.log(sf.cfaV1.contract);
 
-    clients = await pr.getClients(admin.address);
-    const clientId = clients[0];
+    let q = daix.authorizeFlowOperatorWithFullControl({
+      flowOperator: sf.settings.config.cfaV1Address,
+    });
+    console.log("auth flow operation outcome: ", q);
+    let result = await q.exec(admin);
+    console.log("result", result);
+    let final = await result.wait();
+    console.log("final", final);
 
-    await expect(pr.checkIn(clientId, daix.address)).to.be.reverted;
+    q = daix.authorizeFlowOperatorWithFullControl({
+      flowOperator: pr.address,
+    });
+    console.log("auth flow operation outcome: ", q);
+    result = await q.exec(admin);
+    console.log("result", result);
+    final = await result.wait();
+    console.log("final", final);
+
+    q = daix.authorizeFlowOperatorWithFullControl({
+      flowOperator: sf.settings.config.hostAddress,
+    });
+    console.log("auth flow operation outcome: ", q);
+    result = await q.exec(admin);
+    console.log("result", result);
+    final = await result.wait();
+    console.log("final", final);
+
+    // q = await daix.authorizeFlowOperatorWithFullControl({
+    //   flowOperator: sf.settings.config.cfaV1Address,
+    // });
+    // console.log("auth flow operation outcome: ", q);
+    // await q.exec(daix);
+    // q = await daix.authorizeFlowOperatorWithFullControl({
+    //   flowOperator: pr.address,
+    // });
+    // console.log("auth flow operation outcome: ", q);
+    // await q.exec(daix);
+
+    console.log("authorized");
+
+    const antPR = pr.connect(ant);
+    await antPR.addClient();
+
+    console.log("admin adddress", admin.address);
+
+    const daixBal = await daix.balanceOf({
+      account: admin.address,
+      providerOrSigner: admin,
+    });
+    console.log("daix bal for acct 0: ", daixBal);
+
+    const antClientId = (await antPR.getClients(ant.address))[0];
+    await pr.checkIn(antClientId, daix.address);
+
+    // await expect(pr.checkIn(antilopeClientId, daix.address)).not.to.be.reverted;
   });
 });

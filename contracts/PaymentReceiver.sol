@@ -73,6 +73,7 @@ contract PaymentReceiver is IPaymentReceiver, ClientDatabase {
  
     function checkIn(uint256 clientId, ISuperToken token) external {
         address _addr = getAddress(clientId);
+ 
         _createFlow(_addr, 1, token);
     }
 
@@ -84,11 +85,15 @@ contract PaymentReceiver is IPaymentReceiver, ClientDatabase {
     function _createFlow(address to, int96 flowRate, ISuperToken _acceptedToken) internal {
         if (to == address(this) || to == address(0)) return;
 
+        console.log("contract address below");
+        console.logAddress(address(this));
+
         _host.callAgreement(
             _cfa,
             abi.encodeWithSelector(
-                _cfa.createFlow.selector,
+                _cfa.createFlowByOperator.selector,
                 _acceptedToken,
+                msg.sender,
                 to,
                 flowRate,
                 new bytes(0)
