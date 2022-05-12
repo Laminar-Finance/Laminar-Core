@@ -4,9 +4,12 @@ import "hardhat/console.sol";
 import "./IPaymentReceiver.sol";
 import {ISuperfluid, ISuperToken, ISuperApp} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import {IConstantFlowAgreementV1} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
+import { Counters } from "@openzeppelin/contracts/utils/Counters.sol";
 
 contract ClientDatabase {
-    uint private nextId;
+    using Counters for Counters.Counter;
+
+    Counters.Counter private idCounter;
     mapping (uint256 => address) private clientIds;
     uint256[] private idList;
     // An address cannot have more than 128 associated clients.
@@ -15,9 +18,9 @@ contract ClientDatabase {
     constructor() {}
 
     function addClient() external returns (uint256) {
-        uint256 _id = nextId;
+        uint256 _id = idCounter.current();
 
-        nextId++;
+        idCounter.increment();
 
         clientIds[_id] = msg.sender;
 
