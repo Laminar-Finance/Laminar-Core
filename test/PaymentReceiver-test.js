@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ethers, web3 } = require("hardhat");
-const { Framework, ConstantFlowAgreementV1 } = require("@superfluid-finance/sdk-core");
+const { Framework } = require("@superfluid-finance/sdk-core");
 const daiABI = require("./abis/fDAIABI");
 const deployFramework = require("@superfluid-finance/ethereum-contracts/scripts/deploy-framework");
 const deployTestToken = require("@superfluid-finance/ethereum-contracts/scripts/deploy-test-token");
