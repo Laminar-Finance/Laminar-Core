@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-describe.only("Database", function () {
+describe("Database", function () {
   let accounts;
   let admin;
   let ant;
