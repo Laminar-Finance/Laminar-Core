@@ -19,6 +19,7 @@ describe("PaymentReceiver", function () {
   let beetle;
   let cricket;
   let dragonfly;
+  let earwig;
 
   let sf;
   let dai;
@@ -34,6 +35,7 @@ describe("PaymentReceiver", function () {
     beetle = accounts[2];
     cricket = accounts[3];
     dragonfly = accounts[4];
+    earwig = accounts[5];
 
     await deployFramework(errorHandler, {
       web3,
@@ -87,7 +89,7 @@ describe("PaymentReceiver", function () {
     });
     console.log("daix bal for acct 0: ", daixBal);
 
-    const transferOperation = await daix.transfer({
+    let transferOperation = await daix.transfer({
       sender: admin.address,
       receiver: dragonfly.address,
       amount: 400,
@@ -98,6 +100,18 @@ describe("PaymentReceiver", function () {
       providerOrSigner: dragonfly,
     });
     console.log("daix bal for acct 4: ", daixBal);
+
+    transferOperation = await daix.transfer({
+      sender: admin.address,
+      receiver: earwig.address,
+      amount: 240,
+    });
+    await transferOperation.exec(admin);
+    daixBal = await daix.balanceOf({
+      account: earwig.address,
+      providerOrSigner: earwig,
+    });
+    console.log("daix bal for acct 5: ", daixBal);
   });
 
   beforeEach(async function () {
@@ -110,10 +124,23 @@ describe("PaymentReceiver", function () {
     await pr.deployed();
 
     // Authorize the deployed PaymentReceiver contract as a superfluid operator
-    const transaction = daix.authorizeFlowOperatorWithFullControl({
+    // on behalf of the admin, dragonfly and earwig users
+    let transaction = daix.authorizeFlowOperatorWithFullControl({
       flowOperator: pr.address,
     });
-    const result = await transaction.exec(admin);
+    let result = await transaction.exec(admin);
+    await result.wait();
+
+    transaction = daix.authorizeFlowOperatorWithFullControl({
+      flowOperator: pr.address,
+    });
+    result = await transaction.exec(dragonfly);
+    await result.wait();
+
+    transaction = daix.authorizeFlowOperatorWithFullControl({
+      flowOperator: pr.address,
+    });
+    result = await transaction.exec(earwig);
     await result.wait();
   });
 
@@ -181,7 +208,37 @@ describe("PaymentReceiver", function () {
     expect(antGate.activeUsers.length).to.equal(1);
     expect(antGate.activeUsers[0]).to.equal(admin.address);
 
+    const dragonflyPR = pr.connect(dragonfly);
+    await dragonflyPR.checkIn(antGateId);
+    antGate = (await pr.getGates(ant.address))[0];
+    expect(antGate.activeUsers.length).to.equal(2);
+    expect(antGate.activeUsers[1]).to.equal(dragonfly.address);
+
+    const earwigPR = pr.connect(earwig);
+    await earwigPR.checkIn(antGateId);
+    antGate = (await pr.getGates(ant.address))[0];
+    expect(antGate.activeUsers.length).to.equal(3);
+    expect(antGate.activeUsers[2]).to.equal(earwig.address);
+
     await pr.checkOut(antGateId);
+    antGate = (await pr.getGates(ant.address))[0];
+    expect(antGate.activeUsers.length).to.equal(2);
+
+    await earwigPR.checkOut(antGateId);
+    antGate = (await pr.getGates(ant.address))[0];
+    expect(antGate.activeUsers.length).to.equal(1);
+    expect(antGate.activeUsers[0]).to.equal(dragonfly.address);
+
+    await pr.checkIn(antGateId);
+    antGate = (await pr.getGates(ant.address))[0];
+    expect(antGate.activeUsers.length).to.equal(2);
+    expect(antGate.activeUsers[1]).to.equal(admin.address);
+
+    await pr.checkOut(antGateId);
+    antGate = (await pr.getGates(ant.address))[0];
+    expect(antGate.activeUsers.length).to.equal(1);
+
+    await dragonflyPR.checkOut(antGateId);
     antGate = (await pr.getGates(ant.address))[0];
     expect(antGate.activeUsers.length).to.equal(0);
   });
