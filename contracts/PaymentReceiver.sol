@@ -24,7 +24,19 @@ contract PaymentReceiver is IPaymentReceiver, Database {
         host = _host;
         cfa = _cfa;
     }
- 
+    
+    function deleteGate(uint256 _gateId) public override {
+        Gate memory gate = getGate(_gateId);
+
+        for (uint256 index = 0; index < gate.activeUsers.length; index++) {
+            address addr = gate.activeUsers[index];
+            _deleteFlow(addr, gate.payee, onlyToken);
+            emit CheckOut(addr , _gateId);
+        } 
+
+        super.deleteGate(_gateId);
+    }
+
     function checkIn(uint256 _gateId) external {
         Gate storage gate = gates[_gateId];
 
@@ -32,15 +44,15 @@ contract PaymentReceiver is IPaymentReceiver, Database {
             require(gate.activeUsers[index] != msg.sender, string(abi.encodePacked("already checked in at: ", gate.name)));
         }
 
-        _createFlow(gate.payee, 1, onlyToken);
+        _createFlow(gate.payee, gate.flowRate, onlyToken);
         gate.activeUsers.push(msg.sender);
-        emit CheckIn(msg.sender, _gateId, 1, onlyToken);
+        emit CheckIn(msg.sender, _gateId, gate.flowRate, onlyToken);
     }
 
     function checkOut(uint256 _gateId) external {
         Gate storage gate = gates[_gateId];        
 
-        _deleteFlow(gate.payee, onlyToken);
+        _deleteFlow(msg.sender, gate.payee, onlyToken);
 
         for (uint256 index = 0; index < gate.activeUsers.length; index++) {
             if (msg.sender == gate.activeUsers[index]) {
@@ -53,13 +65,13 @@ contract PaymentReceiver is IPaymentReceiver, Database {
         emit CheckOut(msg.sender, _gateId);
     }
 
-    function _deleteFlow(address _to, ISuperToken _token) internal {
+    function _deleteFlow(address _from, address _to, ISuperToken _token) internal {
         host.callAgreement(
             cfa,
             abi.encodeWithSelector(
                 cfa.deleteFlowByOperator.selector,
                 _token,
-                msg.sender,
+                _from,
                 _to,
                 new bytes(0)
             ),
@@ -67,7 +79,7 @@ contract PaymentReceiver is IPaymentReceiver, Database {
         );
     }
 
-    function _createFlow(address _to, int96 _flowRate, ISuperToken _token) internal {
+    function _createFlow(address _to, uint96 _flowRate, ISuperToken _token) internal {
         if (_to == address(this) || _to == address(0)) return;
 
         /**

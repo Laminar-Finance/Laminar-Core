@@ -232,6 +232,47 @@ describe("PaymentReceiver", function () {
     expect(antGate.activeUsers.length).to.equal(0);
   });
 
+  it("Should delete existing flows when a gate is removed", async function () {
+    const beetlePR = pr.connect(beetle);
+    await beetlePR.addGate("bike 17", 2);
+    const beetleGateId = (await beetlePR.getGateIds(beetle.address))[0];
+    await pr.checkIn(beetleGateId);
+
+    const dragonflyPR = pr.connect(dragonfly);
+    await dragonflyPR.checkIn(beetleGateId);
+
+    let flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: beetle.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("2");
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: dragonfly.address,
+      receiver: beetle.address,
+      providerOrSigner: dragonfly,
+    });
+    expect(flow.flowRate).to.equal("2");
+
+    await beetlePR.deleteGate(beetleGateId);
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: beetle.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("0");
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: dragonfly.address,
+      receiver: beetle.address,
+      providerOrSigner: dragonfly,
+    });
+    expect(flow.flowRate).to.equal("0");
+  });
+
   it("Should remove existing flows on check out", async function () {
     const beetlePR = pr.connect(beetle);
     await beetlePR.addGate("bike 4", 1);

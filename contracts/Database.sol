@@ -43,7 +43,7 @@ contract Database {
         return _id;
     }
 
-    function deleteGate(uint256 _gateId) public {
+    function deleteGate(uint256 _gateId) public virtual {
         require(gates[_gateId].payee != address(0), "cannot delete nonexistant gate");
         require(gates[_gateId].payee == msg.sender, "cannot delete gate belonging to another merchant");
 
