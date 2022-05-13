@@ -27,8 +27,9 @@ contract Database {
 
     function addGate(string calldata _name, uint96 _flowRate) external returns (uint256) {
         bytes32 _nameId = keccak256(bytes(_name));
-        for (uint256 index = 0; index < addressGates[msg.sender].length; index++) {
-            Gate memory _gate = gates[addressGates[msg.sender][index]];
+        uint256[] memory gateIds = addressGates[msg.sender];
+        for (uint256 index = 0; index < gateIds.length; index++) {
+            Gate memory _gate = gates[gateIds[index]];
             require(keccak256(_gate.name) != _nameId, string(abi.encodePacked("Cannot create a gate of name ", _name, "as one already exists with that name")));
         }
         
@@ -42,11 +43,19 @@ contract Database {
         return _id;
     }
 
-    /**
-    * @dev there can be more than 128 clientIds per address, but additional ids will never be returned by this function.
-    */
-    function getGateways(address _addr) external view returns (uint256[] memory) {
+    function getGateIds(address _addr) external view returns (uint256[] memory) {
         return addressGates[_addr];
+    }
+    
+    function getGates(address _addr) external view returns (Gate[] memory) {
+        uint256[] memory gateIds = addressGates[_addr];
+        Gate[] memory _gates = new Gate[](gateIds.length);
+
+        for (uint256 index = 0; index < gateIds.length; index++) {
+            _gates[index] = gates[gateIds[index]];
+        }
+
+        return _gates;
     }
 
     function getAddress(uint256 _gateId) public view returns (address) {

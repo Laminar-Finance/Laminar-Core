@@ -115,7 +115,7 @@ describe("PaymentReceiver", function () {
     const antPR = pr.connect(ant);
     await antPR.addGate();
 
-    const antClientId = (await antPR.getGateways(ant.address))[0];
+    const antClientId = (await antPR.getGateIds(ant.address))[0];
     await pr.checkIn(antClientId, daix.address);
 
     flow = await sf.cfaV1.getFlow({
@@ -132,7 +132,7 @@ describe("PaymentReceiver", function () {
     const antPR = pr.connect(ant);
     await antPR.addGate();
 
-    const antClientId = (await antPR.getGateways(ant.address))[0];
+    const antClientId = (await antPR.getGateIds(ant.address))[0];
     await expect(pr.checkIn(antClientId, daix.address))
       .to.emit(pr, "CheckIn")
       .withArgs(admin.address, antClientId, 1, daix.address);
@@ -144,12 +144,12 @@ describe("PaymentReceiver", function () {
   it("Should remove existing flows on check out", async function () {
     const beetlePR = pr.connect(beetle);
     await beetlePR.addGate();
-    const beetleClientId = (await beetlePR.getGateways(beetle.address))[0];
+    const beetleClientId = (await beetlePR.getGateIds(beetle.address))[0];
     await pr.checkIn(beetleClientId, daix.address);
 
     const criketPR = pr.connect(cricket);
     await criketPR.addGate();
-    const cricketClientId = (await beetlePR.getGateways(cricket.address))[0];
+    const cricketClientId = (await beetlePR.getGateIds(cricket.address))[0];
     await pr.checkIn(cricketClientId, daix.address);
 
     let flow = await sf.cfaV1.getFlow({
