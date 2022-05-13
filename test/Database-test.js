@@ -139,6 +139,41 @@ describe("Database", function () {
     expect(gate.name).to.equal("truck 4");
   });
 
+  it("Should rename gates", async function () {
+    const PR = await ethers.getContractFactory("Database");
+    const pr = await PR.deploy(fauxDiax.address);
+    await pr.deployed();
+
+    await pr.addGate("server #7356", 1);
+    const gateId = (await pr.getGateIds(admin.address))[0];
+    let gate = await pr.getGate(gateId);
+    expect(gate.name).to.equal("server #7356");
+
+    await pr.renameGate(gateId, "server #1");
+    gate = await pr.getGate(gateId);
+    expect(gate.name).to.equal("server #1");
+  });
+
+  it("Should prevent renaming to existing gates", async function () {
+    const PR = await ethers.getContractFactory("Database");
+    const pr = await PR.deploy(fauxDiax.address);
+    await pr.deployed();
+
+    await pr.addGate("server #7356", 1);
+    const gateId = (await pr.getGateIds(admin.address))[0];
+    await pr.addGate("server #77", 1);
+
+    await expect(pr.renameGate(gateId, "server #77")).to.be.reverted;
+  });
+
+  it("Should prevent renaming of nonexistant gates", async function () {
+    const PR = await ethers.getContractFactory("Database");
+    const pr = await PR.deploy(fauxDiax.address);
+    await pr.deployed();
+
+    await expect(pr.renameGate(32473472, "server #77")).to.be.reverted;
+  });
+
   it("Should prevent double deletion", async function () {
     const PR = await ethers.getContractFactory("Database");
     const pr = await PR.deploy(fauxDiax.address);
