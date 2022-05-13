@@ -2,27 +2,27 @@ pragma solidity ^0.8.11;
 
 import "hardhat/console.sol";
 import "./IPaymentReceiver.sol";
-import {ISuperfluid, ISuperToken, ISuperApp} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
-import {IConstantFlowAgreementV1} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
+import { ISuperfluid, ISuperToken, ISuperApp } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+import { IConstantFlowAgreementV1 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
 import { Database } from "./Database.sol";
 
 contract PaymentReceiver is IPaymentReceiver, Database {
-    ISuperfluid private _host; // host
-    IConstantFlowAgreementV1 private _cfa; // the stored constant flow agreement class 
+    ISuperfluid private host; // host
+    IConstantFlowAgreementV1 private cfa; // the stored constant flow agreement class 
     
-    event CheckIn(address _checkee, uint256 _gateId, uint96 _flowRate, ISuperToken token);
-    event CheckOut(address _checkee, uint256 _gateId);
+    event CheckIn(address checkee, uint256 gateId, uint96 flowRate, ISuperToken token);
+    event CheckOut(address checkee, uint256 gateId);
 
      constructor(
-        ISuperfluid host,
-        IConstantFlowAgreementV1 cfa,
-        ISuperToken token
-    ) Database(token) {
-        _host = host;
-        _cfa = cfa;
-
+        ISuperfluid _host,
+        IConstantFlowAgreementV1 _cfa,
+        ISuperToken _token
+    ) Database(_token) {
         assert(address(_host) != address(0));
         assert(address(_cfa) != address(0));
+        
+        host = _host;
+        cfa = _cfa;
     }
  
     function checkIn(uint256 _gateId) external {
@@ -31,7 +31,6 @@ contract PaymentReceiver is IPaymentReceiver, Database {
         for (uint256 index = 0; index < gate.activeUsers.length; index++) {
             require(gate.activeUsers[index] != msg.sender, string(abi.encodePacked("already checked in at: ", gate.name)));
         }
-
 
         _createFlow(gate.payee, 1, onlyToken);
         gate.activeUsers.push(msg.sender);
@@ -55,10 +54,10 @@ contract PaymentReceiver is IPaymentReceiver, Database {
     }
 
     function _deleteFlow(address _to, ISuperToken _token) internal {
-        _host.callAgreement(
-            _cfa,
+        host.callAgreement(
+            cfa,
             abi.encodeWithSelector(
-                _cfa.deleteFlowByOperator.selector,
+                cfa.deleteFlowByOperator.selector,
                 _token,
                 msg.sender,
                 _to,
@@ -75,10 +74,10 @@ contract PaymentReceiver is IPaymentReceiver, Database {
          * @dev flows between two different addreses can only be created by a contract
          * with superfluid operator permissions. 
          */
-        _host.callAgreement(
-            _cfa,
+        host.callAgreement(
+            cfa,
             abi.encodeWithSelector(
-                _cfa.createFlowByOperator.selector,
+                cfa.createFlowByOperator.selector,
                 _token,
                 msg.sender,
                 _to,

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.11;
 
 import "hardhat/console.sol";
-import {ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+import { ISuperToken } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 
 interface IPaymentReceiver {
     /**

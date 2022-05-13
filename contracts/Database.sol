@@ -1,7 +1,7 @@
 pragma solidity ^0.8.11;
 
 import { Counters } from "@openzeppelin/contracts/utils/Counters.sol";
-import {ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+import { ISuperToken } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 
 
 contract Database {
@@ -43,11 +43,11 @@ contract Database {
         return _id;
     }
 
-    function getGateIds(address _addr) external view returns (uint256[] memory) {
+    function getGateIds(address _addr) public view returns (uint256[] memory) {
         return addressGates[_addr];
     }
     
-    function getGates(address _addr) external view returns (Gate[] memory) {
+    function getGates(address _addr) public view returns (Gate[] memory) {
         uint256[] memory gateIds = addressGates[_addr];
         Gate[] memory _gates = new Gate[](gateIds.length);
 

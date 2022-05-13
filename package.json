@@ -17,7 +17,6 @@
   },
   "homepage": "https://github.com/Laminar-Finance/Laminar-Core#readme",
   "devDependencies": {
-    "@eth-optimism/smock": "^1.1.10",
     "@nomiclabs/hardhat-ethers": "^2.0.5",
     "@nomiclabs/hardhat-etherscan": "^3.0.3",
     "@nomiclabs/hardhat-truffle5": "^2.0.5",
