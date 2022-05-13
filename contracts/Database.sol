@@ -6,7 +6,7 @@ import {ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/inte
 
 contract Database {
     struct Gate{
-        bytes name;
+        string name;
         address payee;
         uint96 flowRate; 
         ISuperToken token;
@@ -30,13 +30,13 @@ contract Database {
         uint256[] memory gateIds = addressGates[msg.sender];
         for (uint256 index = 0; index < gateIds.length; index++) {
             Gate memory _gate = gates[gateIds[index]];
-            require(keccak256(_gate.name) != _nameId, string(abi.encodePacked("Cannot create a gate of name ", _name, "as one already exists with that name")));
+            require(keccak256(bytes(_gate.name)) != _nameId, string(abi.encodePacked("Cannot create a gate of name ", _name, "as one already exists with that name")));
         }
         
         uint256 _id = idCounter.current();
 
         idCounter.increment();
-        gates[_id] = Gate(bytes(_name), msg.sender, _flowRate, onlyToken, new address[](0));
+        gates[_id] = Gate(_name, msg.sender, _flowRate, onlyToken, new address[](0));
 
         addressGates[msg.sender].push(_id);
 
@@ -52,7 +52,14 @@ contract Database {
         Gate[] memory _gates = new Gate[](gateIds.length);
 
         for (uint256 index = 0; index < gateIds.length; index++) {
-            _gates[index] = gates[gateIds[index]];
+            Gate memory _loadedGate = gates[gateIds[index]];
+            _gates[index] = Gate(
+                string(_loadedGate.name),
+                _loadedGate.payee,
+                _loadedGate.flowRate,
+                _loadedGate.token,
+                _loadedGate.activeUsers
+            );
         }
 
         return _gates;

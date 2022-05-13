@@ -44,11 +44,23 @@ describe.only("Database", function () {
     const pr = await PR.deploy(daix.address);
     await pr.deployed();
 
-    await pr.addGate("bike 1", 1);
+    await pr.addGate("bike 1", 2);
+    await pr.addGate("bike 2", 3);
 
-    const gate = (await pr.getGates(admin.address))[0];
-
+    let gate = (await pr.getGates(admin.address))[0];
     expect(gate.name).to.equal("bike 1");
+    expect(gate.flowRate).to.equal(2);
+    expect(gate.payee).to.equal(admin.address);
+
+    gate = (await pr.getGates(admin.address))[1];
+    expect(gate.name).to.equal("bike 2");
+    expect(gate.flowRate).to.equal(3);
+    expect(gate.payee).to.equal(admin.address);
+
+    const antPR = pr.connect(ant);
+    gate = (await antPR.getGates(admin.address))[0];
+    expect(gate.name).to.equal("bike 1");
+    expect(gate.payee).to.equal(admin.address);
   });
 
   it("Should show payee address when given a client id", async function () {
