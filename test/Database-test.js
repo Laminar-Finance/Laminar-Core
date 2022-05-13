@@ -97,6 +97,22 @@ describe("Database", function () {
     await expect(antPR.addGate("truck 1", 4)).not.to.be.reverted;
   });
 
+  it.only("Should delete gates", async function () {
+    const PR = await ethers.getContractFactory("Database");
+    const pr = await PR.deploy(fauxDiax.address);
+    await pr.deployed();
+
+    await pr.addGate("truck 1", 4);
+
+    let gateIds = await pr.getGateIds(admin.address);
+    expect(gateIds.length).to.equal(1);
+    const gateId = gateIds[0];
+
+    await pr.deleteGate(gateId);
+    gateIds = await pr.getGateIds(admin.address);
+    expect(gateIds.length).to.equal(0);
+  });
+
   it("Should add client ids for the sender", async function () {
     const PR = await ethers.getContractFactory("Database");
     const pr = await PR.deploy(fauxDiax.address);

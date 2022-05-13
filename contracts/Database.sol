@@ -25,6 +25,19 @@ contract Database {
         onlyToken = _token;
     }
 
+    function deleteGate(uint256 _gateId) public {
+        uint256[] storage merchantGates = addressGates[msg.sender];
+
+         for (uint256 index = 0; index < merchantGates.length; index++) {
+            if (_gateId == merchantGates[index]) {
+                merchantGates[index] = merchantGates[merchantGates.length - 1];
+                merchantGates.pop();
+
+                break;
+            }
+        }       
+    }
+
     function addGate(string calldata _name, uint96 _flowRate) external returns (uint256) {
         bytes32 _nameId = keccak256(bytes(_name));
         uint256[] memory gateIds = addressGates[msg.sender];
