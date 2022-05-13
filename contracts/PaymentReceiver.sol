@@ -6,7 +6,6 @@ import {ISuperfluid, ISuperToken, ISuperApp} from "@superfluid-finance/ethereum-
 import {IConstantFlowAgreementV1} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
 import { Database } from "./Database.sol";
 
-
 contract PaymentReceiver is IPaymentReceiver, Database {
     ISuperfluid private _host; // host
     IConstantFlowAgreementV1 private _cfa; // the stored constant flow agreement class 
@@ -16,8 +15,9 @@ contract PaymentReceiver is IPaymentReceiver, Database {
 
      constructor(
         ISuperfluid host,
-        IConstantFlowAgreementV1 cfa
-    ) {
+        IConstantFlowAgreementV1 cfa,
+        ISuperToken token
+    ) Database(token) {
         _host = host;
         _cfa = cfa;
 

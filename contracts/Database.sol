@@ -1,26 +1,37 @@
 pragma solidity ^0.8.11;
 
 import { Counters } from "@openzeppelin/contracts/utils/Counters.sol";
+import {ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+
 
 contract Database {
+    struct Gate{
+        bytes name;
+        address payee;
+        uint96 flowRate; 
+        ISuperToken token;
+        address[] activeUsers; // unordered so it's not expensive to delete memebers
+    }
+
     using Counters for Counters.Counter;
 
     Counters.Counter private idCounter;
-    mapping (uint256 => address) private clientIds;
-    uint256[] private idList;
-    // An address cannot have more than 128 associated clients.
-    uint32 private maxClientIds = 128;
+    mapping (uint256 => Gate) private gates;
+    mapping(address => uint256[]) private addressGates;
 
-    constructor() {}
+    ISuperToken private onlyToken;
 
-    function addGateway() external returns (uint256) {
+    constructor(ISuperToken _token) {
+        onlyToken = _token;
+    }
+
+    function addGate(string calldata _name, uint96 _flowRate) external returns (uint256) {
         uint256 _id = idCounter.current();
 
         idCounter.increment();
+        gates[_id] = Gate(bytes(_name), msg.sender, _flowRate, onlyToken, new address[](0));
 
-        clientIds[_id] = msg.sender;
-
-        idList.push(_id);
+        addressGates[msg.sender].push(_id);
 
         return _id;
     }
@@ -28,28 +39,11 @@ contract Database {
     /**
     * @dev there can be more than 128 clientIds per address, but additional ids will never be returned by this function.
     */
-    function getGateway(address _addr) external view returns (uint256[] memory) {
-        uint256[] memory _clientIds = new uint256[](128);    
-
-        uint _count;
-        for (uint256 index = 0; index < idList.length && index < maxClientIds; index++) {
-            uint256 id = idList[index];
-            if (clientIds[id] == _addr) {
-                _clientIds[_count] = id;
-                _count++;
-            }
-        }
-        
-        uint256[] memory _varibleClientIds = new uint256[](_count);
-
-        for (uint256 index = 0; index < _count; index++) {
-            _varibleClientIds[index] = _clientIds[index];
-        }
-
-        return _varibleClientIds;
+    function getGateways(address _addr) external view returns (uint256[] memory) {
+        return addressGates[_addr];
     }
 
-    function getAddress(uint256 _clientId) public view returns (address) {
-        return clientIds[_clientId];
+    function getAddress(uint256 _gateId) public view returns (address) {
+        return gates[_gateId].payee;
     }
 }
