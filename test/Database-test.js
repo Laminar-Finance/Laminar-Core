@@ -92,6 +92,21 @@ describe.only("Database", function () {
     expect(clientAddress).to.equal(admin.address);
   });
 
+  it("Should prevent duplicate gate names for the same payee address", async function () {
+    const PR = await ethers.getContractFactory("Database");
+    const pr = await PR.deploy(daix.address);
+    await pr.deployed();
+
+    await pr.addGate("truck 1", 4);
+    await expect(pr.addGate("truck 1", 4)).to.be.reverted;
+    await expect(pr.addGate("truck 1", 1)).to.be.reverted;
+    await expect(pr.addGate("truck 1", 0)).to.be.reverted;
+    await expect(pr.addGate("truck 2", 1)).not.to.be.reverted;
+
+    const antPR = pr.connect(ant);
+    await expect(antPR.addGate("truck 1", 4)).not.to.be.reverted;
+  });
+
   it("Should add client ids for the sender", async function () {
     const PR = await ethers.getContractFactory("Database");
     const pr = await PR.deploy(daix.address);

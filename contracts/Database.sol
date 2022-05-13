@@ -26,6 +26,12 @@ contract Database {
     }
 
     function addGate(string calldata _name, uint96 _flowRate) external returns (uint256) {
+        bytes32 _nameId = keccak256(bytes(_name));
+        for (uint256 index = 0; index < addressGates[msg.sender].length; index++) {
+            Gate memory _gate = gates[addressGates[msg.sender][index]];
+            require(keccak256(_gate.name) != _nameId, string(abi.encodePacked("Cannot create a gate of name ", _name, "as one already exists with that name")));
+        }
+        
         uint256 _id = idCounter.current();
 
         idCounter.increment();
