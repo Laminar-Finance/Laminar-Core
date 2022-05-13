@@ -19,7 +19,7 @@ contract Database {
     mapping (uint256 => Gate) private gates;
     mapping(address => uint256[]) private addressGates;
 
-    ISuperToken private onlyToken;
+    ISuperToken internal onlyToken;
 
     constructor(ISuperToken _token) {
         onlyToken = _token;

@@ -116,8 +116,8 @@ describe("PaymentReceiver", function () {
     const antPR = pr.connect(ant);
     await antPR.addGate("bike 1", 1);
 
-    const antClientId = (await antPR.getGateIds(ant.address))[0];
-    await pr.checkIn(antClientId, daix.address);
+    const antGateId = (await antPR.getGateIds(ant.address))[0];
+    await pr.checkIn(antGateId);
 
     flow = await sf.cfaV1.getFlow({
       superToken: daix.address,
@@ -126,32 +126,47 @@ describe("PaymentReceiver", function () {
       providerOrSigner: admin,
     });
     expect(flow.flowRate).to.equal("1");
-    await pr.checkOut(antClientId, daix.address);
+    await pr.checkOut(antGateId);
   });
 
   it("Should emit a CheckIn and CheckOut events", async function () {
     const antPR = pr.connect(ant);
     await antPR.addGate("bike 2", 1);
 
-    const antClientId = (await antPR.getGateIds(ant.address))[0];
-    await expect(pr.checkIn(antClientId, daix.address))
+    const antGateId = (await antPR.getGateIds(ant.address))[0];
+    await expect(pr.checkIn(antGateId))
       .to.emit(pr, "CheckIn")
-      .withArgs(admin.address, antClientId, 1, daix.address);
-    await expect(pr.checkOut(antClientId, daix.address))
+      .withArgs(admin.address, antGateId, 1, daix.address);
+    await expect(pr.checkOut(antGateId))
       .to.emit(pr, "CheckOut")
-      .withArgs(admin.address, antClientId);
+      .withArgs(admin.address, antGateId);
+  });
+
+  it.only("should track active users", async function () {
+    const antPR = pr.connect(ant);
+
+    await antPR.addGate("long term storage unit 99", 3);
+    let antGate = (await pr.getGates(ant.address))[0];
+    expect(antGate.activeUsers.length).to.equal(0);
+
+    const antGateId = (await pr.getGateIds(ant.address))[0];
+    await pr.checkIn(antGateId);
+
+    antGate = (await pr.getGates(ant.address))[0];
+    expect(antGate.activeUsers.length).to.equal(1);
+    expect(antGate.activeUsers[0]).to.equal(admin.address);
   });
 
   it("Should remove existing flows on check out", async function () {
     const beetlePR = pr.connect(beetle);
     await beetlePR.addGate("bike 4", 1);
-    const beetleClientId = (await beetlePR.getGateIds(beetle.address))[0];
-    await pr.checkIn(beetleClientId, daix.address);
+    const beetleGateId = (await beetlePR.getGateIds(beetle.address))[0];
+    await pr.checkIn(beetleGateId);
 
     const criketPR = pr.connect(cricket);
     await criketPR.addGate("storage unit 1", 1);
-    const cricketClientId = (await beetlePR.getGateIds(cricket.address))[0];
-    await pr.checkIn(cricketClientId, daix.address);
+    const cricketGateId = (await beetlePR.getGateIds(cricket.address))[0];
+    await pr.checkIn(cricketGateId);
 
     let flow = await sf.cfaV1.getFlow({
       superToken: daix.address,
@@ -162,7 +177,7 @@ describe("PaymentReceiver", function () {
     expect(flow.flowRate).to.equal("1");
 
     // This should not effect the beetle's flow.
-    await pr.checkOut(cricketClientId, daix.address);
+    await pr.checkOut(cricketGateId);
     flow = await sf.cfaV1.getFlow({
       superToken: daix.address,
       sender: admin.address,
@@ -171,7 +186,7 @@ describe("PaymentReceiver", function () {
     });
     expect(flow.flowRate).to.equal("1");
 
-    await pr.checkOut(beetleClientId, daix.address);
+    await pr.checkOut(beetleGateId);
     flow = await sf.cfaV1.getFlow({
       superToken: daix.address,
       sender: admin.address,

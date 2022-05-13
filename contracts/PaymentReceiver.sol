@@ -10,8 +10,8 @@ contract PaymentReceiver is IPaymentReceiver, Database {
     ISuperfluid private _host; // host
     IConstantFlowAgreementV1 private _cfa; // the stored constant flow agreement class 
     
-    event CheckIn(address _checkee, uint256 _clientId, uint96 _flowRate, ISuperToken token);
-    event CheckOut(address _checkee, uint256 _clientId);
+    event CheckIn(address _checkee, uint256 _gateId, uint96 _flowRate, ISuperToken token);
+    event CheckOut(address _checkee, uint256 _gateId);
 
      constructor(
         ISuperfluid host,
@@ -25,18 +25,18 @@ contract PaymentReceiver is IPaymentReceiver, Database {
         assert(address(_cfa) != address(0));
     }
  
-    function checkIn(uint256 _clientId, ISuperToken _token) external {
-        address _addr = getAddress(_clientId);
+    function checkIn(uint256 _gateId) external {
+        address _addr = getAddress(_gateId);
  
-        _createFlow(_addr, 1, _token);
-        emit CheckIn(msg.sender, _clientId, 1, _token);
+        _createFlow(_addr, 1, onlyToken);
+        emit CheckIn(msg.sender, _gateId, 1, onlyToken);
     }
 
-    function checkOut(uint256 _clientId, ISuperToken _token) external {
-        address _addr = getAddress(_clientId);
+    function checkOut(uint256 _gateId) external {
+        address _addr = getAddress(_gateId);
 
-        _deleteFlow(_addr, _token);
-        emit CheckOut(msg.sender, _clientId);
+        _deleteFlow(_addr, onlyToken);
+        emit CheckOut(msg.sender, _gateId);
     }
 
     function _deleteFlow(address _to, ISuperToken _token) internal {
