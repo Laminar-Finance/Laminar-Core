@@ -125,23 +125,12 @@ describe("PaymentReceiver", function () {
 
     // Authorize the deployed PaymentReceiver contract as a superfluid operator
     // on behalf of the admin, dragonfly and earwig users
-    let transaction = daix.authorizeFlowOperatorWithFullControl({
+    const transaction = daix.authorizeFlowOperatorWithFullControl({
       flowOperator: pr.address,
     });
-    let result = await transaction.exec(admin);
-    await result.wait();
-
-    transaction = daix.authorizeFlowOperatorWithFullControl({
-      flowOperator: pr.address,
-    });
-    result = await transaction.exec(dragonfly);
-    await result.wait();
-
-    transaction = daix.authorizeFlowOperatorWithFullControl({
-      flowOperator: pr.address,
-    });
-    result = await transaction.exec(earwig);
-    await result.wait();
+    await (await transaction.exec(admin)).wait();
+    await (await transaction.exec(dragonfly)).wait();
+    await (await transaction.exec(earwig)).wait();
   });
 
   it("Should create a flow upon check in", async function () {
