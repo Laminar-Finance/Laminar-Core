@@ -7,7 +7,7 @@ describe("Database", function () {
   let ant;
   let beetle;
 
-  let daix;
+  let fauxDiax;
 
   before(async () => {
     accounts = await ethers.getSigners();
@@ -15,12 +15,12 @@ describe("Database", function () {
     ant = accounts[1];
     beetle = accounts[2];
 
-    daix = { address: accounts[9].address };
+    fauxDiax = { address: accounts[9].address };
   });
 
   it("Should generate and store unique client ids", async function () {
     const PR = await ethers.getContractFactory("Database");
-    const pr = await PR.deploy(daix.address);
+    const pr = await PR.deploy(fauxDiax.address);
     await pr.deployed();
 
     let clients = await pr.getGateIds(admin.address);
@@ -41,7 +41,7 @@ describe("Database", function () {
 
   it("Should store and get gate details", async function () {
     const PR = await ethers.getContractFactory("Database");
-    const pr = await PR.deploy(daix.address);
+    const pr = await PR.deploy(fauxDiax.address);
     await pr.deployed();
 
     await pr.addGate("bike 1", 2);
@@ -65,7 +65,7 @@ describe("Database", function () {
 
   it("Should show payee address when given a client id", async function () {
     const PR = await ethers.getContractFactory("Database");
-    const pr = await PR.deploy(daix.address);
+    const pr = await PR.deploy(fauxDiax.address);
     await pr.deployed();
 
     await pr.addGate("truck 1", 4);
@@ -84,7 +84,7 @@ describe("Database", function () {
 
   it("Should prevent duplicate gate names for the same payee address", async function () {
     const PR = await ethers.getContractFactory("Database");
-    const pr = await PR.deploy(daix.address);
+    const pr = await PR.deploy(fauxDiax.address);
     await pr.deployed();
 
     await pr.addGate("truck 1", 4);
@@ -99,7 +99,7 @@ describe("Database", function () {
 
   it("Should add client ids for the sender", async function () {
     const PR = await ethers.getContractFactory("Database");
-    const pr = await PR.deploy(daix.address);
+    const pr = await PR.deploy(fauxDiax.address);
     await pr.deployed();
 
     const antPR = pr.connect(ant);

@@ -18,6 +18,7 @@ describe("PaymentReceiver", function () {
   let ant;
   let beetle;
   let cricket;
+  let dragonfly;
 
   let sf;
   let dai;
@@ -32,6 +33,7 @@ describe("PaymentReceiver", function () {
     ant = accounts[1];
     beetle = accounts[2];
     cricket = accounts[3];
+    dragonfly = accounts[4];
 
     await deployFramework(errorHandler, {
       web3,
@@ -62,8 +64,7 @@ describe("PaymentReceiver", function () {
 
     daix = await sf.loadSuperToken("fDAIx");
 
-    const daiAddress = daix.underlyingToken.address;
-    dai = new ethers.Contract(daiAddress, daiABI, admin);
+    dai = new ethers.Contract(daix.underlyingToken.address, daiABI, admin);
 
     const appInitialBalance = await daix.balanceOf({
       account: admin.address,
@@ -76,15 +77,27 @@ describe("PaymentReceiver", function () {
     await dai.approve(daix.address, ethers.utils.parseEther("3000"));
 
     const daixUpgradeOperation = daix.upgrade({
-      amount: ethers.utils.parseEther("1000"),
+      amount: ethers.utils.parseEther("3000"),
     });
 
     await daixUpgradeOperation.exec(admin);
-    const daixBal = await daix.balanceOf({
+    let daixBal = await daix.balanceOf({
       account: admin.address,
       providerOrSigner: admin,
     });
     console.log("daix bal for acct 0: ", daixBal);
+
+    const transferOperation = await daix.transfer({
+      sender: admin.address,
+      receiver: dragonfly.address,
+      amount: 400,
+    });
+    await transferOperation.exec(admin);
+    daixBal = await daix.balanceOf({
+      account: dragonfly.address,
+      providerOrSigner: dragonfly,
+    });
+    console.log("daix bal for acct 4: ", daixBal);
   });
 
   beforeEach(async function () {
