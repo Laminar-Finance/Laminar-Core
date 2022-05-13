@@ -108,9 +108,35 @@ describe("Database", function () {
     expect(gateIds.length).to.equal(1);
     const gateId = gateIds[0];
 
+    let gate = await pr.getGate(gateId);
+    expect(gate.payee).to.equal(admin.address);
+
     await pr.deleteGate(gateId);
     gateIds = await pr.getGateIds(admin.address);
     expect(gateIds.length).to.equal(0);
+
+    gate = await pr.getGate(gateId);
+    expect(gate.payee).to.equal("0x0000000000000000000000000000000000000000");
+
+    await pr.addGate("truck 1", 1);
+    await pr.addGate("truck 2", 2);
+    await pr.addGate("truck 3", 3);
+    await pr.addGate("truck 4", 1);
+    gateIds = await pr.getGateIds(admin.address);
+    expect(gateIds.length).to.equal(4);
+
+    await pr.deleteGate(gateIds[1]);
+    await pr.deleteGate(gateIds[2]);
+    gateIds = await pr.getGateIds(admin.address);
+    expect(gateIds.length).to.equal(2);
+
+    gate = await pr.getGate(gateIds[0]);
+    expect(gate.payee).to.equal(admin.address);
+    expect(gate.name).to.equal("truck 1");
+
+    gate = await pr.getGate(gateIds[1]);
+    expect(gate.payee).to.equal(admin.address);
+    expect(gate.name).to.equal("truck 4");
   });
 
   it("Should add client ids for the sender", async function () {
