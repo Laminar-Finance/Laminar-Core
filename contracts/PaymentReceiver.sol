@@ -26,16 +26,31 @@ contract PaymentReceiver is IPaymentReceiver, Database {
     }
  
     function checkIn(uint256 _gateId) external {
-        address _addr = getAddress(_gateId);
- 
-        _createFlow(_addr, 1, onlyToken);
+        Gate storage gate = gates[_gateId];
+
+        for (uint256 index = 0; index < gate.activeUsers.length; index++) {
+            require(gate.activeUsers[index] != msg.sender, string(abi.encodePacked("already checked in at: ", gate.name)));
+        }
+
+
+        _createFlow(gate.payee, 1, onlyToken);
+        gate.activeUsers.push(msg.sender);
         emit CheckIn(msg.sender, _gateId, 1, onlyToken);
     }
 
     function checkOut(uint256 _gateId) external {
-        address _addr = getAddress(_gateId);
+        Gate storage gate = gates[_gateId];        
 
-        _deleteFlow(_addr, onlyToken);
+        _deleteFlow(gate.payee, onlyToken);
+
+        for (uint256 index = 0; index < gate.activeUsers.length; index++) {
+            if (msg.sender == gate.activeUsers[index]) {
+                gate.activeUsers[index] = gate.activeUsers[gate.activeUsers.length - 1];
+                gate.activeUsers.pop();
+
+                break;
+            }
+        }
         emit CheckOut(msg.sender, _gateId);
     }
 

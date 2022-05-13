@@ -16,7 +16,7 @@ contract Database {
     using Counters for Counters.Counter;
 
     Counters.Counter private idCounter;
-    mapping (uint256 => Gate) private gates;
+    mapping (uint256 => Gate) internal gates;
     mapping(address => uint256[]) private addressGates;
 
     ISuperToken internal onlyToken;

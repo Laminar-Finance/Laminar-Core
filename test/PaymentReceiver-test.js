@@ -72,8 +72,8 @@ describe("PaymentReceiver", function () {
 
     console.log("appInitialBalance: ", appInitialBalance); // initial balance of the app is 0
 
-    await dai.mint(admin.address, ethers.utils.parseEther("1000"));
-    await dai.approve(daix.address, ethers.utils.parseEther("1000"));
+    await dai.mint(admin.address, ethers.utils.parseEther("3000"));
+    await dai.approve(daix.address, ethers.utils.parseEther("3000"));
 
     const daixUpgradeOperation = daix.upgrade({
       amount: ethers.utils.parseEther("1000"),
@@ -142,7 +142,19 @@ describe("PaymentReceiver", function () {
       .withArgs(admin.address, antGateId);
   });
 
-  it.only("should track active users", async function () {
+  it("should prevent double checkins", async function () {
+    const antPR = pr.connect(ant);
+    await antPR.addGate("bike 77", 1);
+
+    const antGateId = (await antPR.getGateIds(ant.address))[0];
+    await pr.checkIn(antGateId);
+    await expect(pr.checkIn(antGateId)).to.be.revertedWith(
+      "already checked in at: bike 77"
+    );
+    await pr.checkOut(antGateId);
+  });
+
+  it("should track active users", async function () {
     const antPR = pr.connect(ant);
 
     await antPR.addGate("long term storage unit 99", 3);
@@ -155,6 +167,10 @@ describe("PaymentReceiver", function () {
     antGate = (await pr.getGates(ant.address))[0];
     expect(antGate.activeUsers.length).to.equal(1);
     expect(antGate.activeUsers[0]).to.equal(admin.address);
+
+    await pr.checkOut(antGateId);
+    antGate = (await pr.getGates(ant.address))[0];
+    expect(antGate.activeUsers.length).to.equal(0);
   });
 
   it("Should remove existing flows on check out", async function () {
