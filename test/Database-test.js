@@ -97,6 +97,144 @@ describe("Database", function () {
     await expect(antPR.addGate("truck 1", 4)).not.to.be.reverted;
   });
 
+  it("Should delete gates", async function () {
+    const PR = await ethers.getContractFactory("Database");
+    const pr = await PR.deploy(fauxDiax.address);
+    await pr.deployed();
+
+    await pr.addGate("truck 1", 4);
+
+    let gateIds = await pr.getGateIds(admin.address);
+    expect(gateIds.length).to.equal(1);
+    const gateId = gateIds[0];
+
+    let gate = await pr.getGate(gateId);
+    expect(gate.payee).to.equal(admin.address);
+
+    await pr.deleteGate(gateId);
+    gateIds = await pr.getGateIds(admin.address);
+    expect(gateIds.length).to.equal(0);
+
+    gate = await pr.getGate(gateId);
+    expect(gate.payee).to.equal("0x0000000000000000000000000000000000000000");
+
+    await pr.addGate("truck 1", 1);
+    await pr.addGate("truck 2", 2);
+    await pr.addGate("truck 3", 3);
+    await pr.addGate("truck 4", 1);
+    gateIds = await pr.getGateIds(admin.address);
+    expect(gateIds.length).to.equal(4);
+
+    await pr.deleteGate(gateIds[1]);
+    await pr.deleteGate(gateIds[2]);
+    gateIds = await pr.getGateIds(admin.address);
+    expect(gateIds.length).to.equal(2);
+
+    gate = await pr.getGate(gateIds[0]);
+    expect(gate.payee).to.equal(admin.address);
+    expect(gate.name).to.equal("truck 1");
+
+    gate = await pr.getGate(gateIds[1]);
+    expect(gate.payee).to.equal(admin.address);
+    expect(gate.name).to.equal("truck 4");
+  });
+
+  it("Should rename gates", async function () {
+    const PR = await ethers.getContractFactory("Database");
+    const pr = await PR.deploy(fauxDiax.address);
+    await pr.deployed();
+
+    await pr.addGate("server #7356", 1);
+    const gateId = (await pr.getGateIds(admin.address))[0];
+    let gate = await pr.getGate(gateId);
+    expect(gate.name).to.equal("server #7356");
+
+    await pr.renameGate(gateId, "server #1");
+    gate = await pr.getGate(gateId);
+    expect(gate.name).to.equal("server #1");
+  });
+
+  it("Should prevent renaming to existing gates", async function () {
+    const PR = await ethers.getContractFactory("Database");
+    const pr = await PR.deploy(fauxDiax.address);
+    await pr.deployed();
+
+    await pr.addGate("server #7356", 1);
+    const gateId = (await pr.getGateIds(admin.address))[0];
+    await pr.addGate("server #77", 1);
+
+    await expect(pr.renameGate(gateId, "server #77")).to.be.reverted;
+  });
+
+  it("Should prevent renaming of nonexistant gates", async function () {
+    const PR = await ethers.getContractFactory("Database");
+    const pr = await PR.deploy(fauxDiax.address);
+    await pr.deployed();
+
+    await expect(pr.renameGate(32473472, "server #77")).to.be.reverted;
+  });
+
+  it("Should prevent gate deletion by another address", async function () {
+    const PR = await ethers.getContractFactory("Database");
+    const pr = await PR.deploy(fauxDiax.address);
+    await pr.deployed();
+
+    await pr.addGate("truck 1", 1);
+    const gateId = (await pr.getGateIds(admin.address))[0];
+
+    const antPR = pr.connect(ant);
+    await expect(antPR.deleteGate(gateId)).to.be.revertedWith(
+      "cannot delete gate belonging to another merchant"
+    );
+  });
+
+  it.only("Should prevent gate renaming by another address", async function () {
+    const PR = await ethers.getContractFactory("Database");
+    const pr = await PR.deploy(fauxDiax.address);
+    await pr.deployed();
+
+    await pr.addGate("truck 1", 1);
+    const gateId = (await pr.getGateIds(admin.address))[0];
+
+    const antPR = pr.connect(ant);
+    await expect(antPR.renameGate(gateId, "antGate")).to.be.revertedWith(
+      "cannot rename gate belonging to another merchant"
+    );
+  });
+
+  it("Should prevent double deletion", async function () {
+    const PR = await ethers.getContractFactory("Database");
+    const pr = await PR.deploy(fauxDiax.address);
+    await pr.deployed();
+
+    await expect(pr.deleteGate(93242342)).to.be.revertedWith(
+      "cannot delete nonexistant gate"
+    );
+
+    await pr.addGate("truck 1", 1);
+    const gateId = (await pr.getGateIds(admin.address))[0];
+
+    await pr.deleteGate(gateId);
+
+    await expect(pr.deleteGate(gateId)).to.be.revertedWith(
+      "cannot delete nonexistant gate"
+    );
+  });
+
+  it("Should prevent deletion by other merchants", async function () {
+    const PR = await ethers.getContractFactory("Database");
+    const pr = await PR.deploy(fauxDiax.address);
+    await pr.deployed();
+
+    await pr.addGate("truck 1", 1);
+    const gateId = (await pr.getGateIds(admin.address))[0];
+    const antPR = pr.connect(ant);
+
+    await expect(antPR.deleteGate(gateId)).to.be.revertedWith(
+      "cannot delete gate belonging to another merchant"
+    );
+  });
+
   it("Should add client ids for the sender", async function () {
     const PR = await ethers.getContractFactory("Database");
     const pr = await PR.deploy(fauxDiax.address);

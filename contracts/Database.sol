@@ -25,14 +25,24 @@ contract Database {
         onlyToken = _token;
     }
 
-    function addGate(string calldata _name, uint96 _flowRate) external returns (uint256) {
-        bytes32 _nameId = keccak256(bytes(_name));
-        uint256[] memory gateIds = addressGates[msg.sender];
-        for (uint256 index = 0; index < gateIds.length; index++) {
-            Gate memory _gate = gates[gateIds[index]];
-            require(keccak256(bytes(_gate.name)) != _nameId, string(abi.encodePacked("Cannot create a gate of name ", _name, "as one already exists with that name")));
-        }
+    function renameGate(uint256 _gateId, string memory _name) external {
+        require(gates[_gateId].payee == msg.sender, "cannot rename gate belonging to another merchant");
         
+        Gate storage gate = gates[_gateId];
+     
+        require(
+            gate.payee != address(0), 
+            string(abi.encodePacked("gate with id ", _gateId, " does not exist and so cannot be renamed"))
+        );
+
+        _checkGateName(_name);
+
+        gate.name = _name;
+    }
+
+    function addGate(string calldata _name, uint96 _flowRate) external returns (uint256) {
+        _checkGateName(_name);
+
         uint256 _id = idCounter.current();
 
         idCounter.increment();
@@ -43,8 +53,40 @@ contract Database {
         return _id;
     }
 
+    function _checkGateName(string memory _name) private view {
+        bytes32 _nameId = keccak256(bytes(_name));
+        uint256[] memory gateIds = addressGates[msg.sender];
+        for (uint256 index = 0; index < gateIds.length; index++) {
+            Gate memory _gate = gates[gateIds[index]];
+            require(keccak256(bytes(_gate.name)) != _nameId, string(abi.encodePacked(_name, "is already taken by another gate")));
+        }
+    }
+
+    function deleteGate(uint256 _gateId) public virtual {
+        require(gates[_gateId].payee != address(0), "cannot delete nonexistant gate");
+        require(gates[_gateId].payee == msg.sender, "cannot delete gate belonging to another merchant");
+
+
+        uint256[] storage merchantGates = addressGates[msg.sender];
+
+         for (uint256 index = 0; index < merchantGates.length; index++) {
+            if (_gateId == merchantGates[index]) {
+                merchantGates[index] = merchantGates[merchantGates.length - 1];
+                merchantGates.pop();
+
+                break;
+            }
+        }
+
+        delete gates[_gateId];       
+    }
+
     function getGateIds(address _addr) public view returns (uint256[] memory) {
         return addressGates[_addr];
+    }
+
+    function getGate(uint256 _gateId) public view returns (Gate memory) {
+        return gates[_gateId];
     }
     
     function getGates(address _addr) public view returns (Gate[] memory) {
