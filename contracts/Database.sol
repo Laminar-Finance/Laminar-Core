@@ -8,9 +8,9 @@ contract Database {
     struct Gate{
         string name;
         address payee;
-        uint96 flowRate; 
+        int96 flowRate; 
         ISuperToken token;
-        address[] activeUsers; // unordered so it's not expensive to delete memebers
+        uint256 activeUsers;
     }
 
     using Counters for Counters.Counter;
@@ -18,6 +18,8 @@ contract Database {
     Counters.Counter private idCounter;
     mapping (uint256 => Gate) internal gates;
     mapping(address => uint256[]) private addressGates;
+    mapping(address => mapping(uint256 => bool)) public checkedIn;
+    mapping(uint256 => mapping(uint256 => address)) public gateUsers;
 
     ISuperToken internal onlyToken;
 
@@ -38,13 +40,13 @@ contract Database {
         gate.name = _name;
     }
 
-    function addGate(string calldata _name, uint96 _flowRate) external returns (uint256) {
+    function addGate(string calldata _name, int96 _flowRate) external returns (uint256) {
         _checkGateName(_name);
 
         uint256 _id = idCounter.current();
 
         idCounter.increment();
-        gates[_id] = Gate(_name, msg.sender, _flowRate, onlyToken, new address[](0));
+        gates[_id] = Gate(_name, msg.sender, _flowRate, onlyToken, 0);
 
         addressGates[msg.sender].push(_id);
 
@@ -107,5 +109,14 @@ contract Database {
 
     function getAddress(uint256 _gateId) public view returns (address) {
         return gates[_gateId].payee;
+    }
+
+    function getGateUsers(uint256 _gateId) public view returns (address[] memory _gateUsers) {
+        Gate memory gate = gates[_gateId];
+        _gateUsers = new address[](gate.activeUsers);
+        for(uint256 i = 0; i < gate.activeUsers; i++) {
+            _gateUsers[i] = gateUsers[_gateId][i];
+        }
+        return _gateUsers;
     }
 }

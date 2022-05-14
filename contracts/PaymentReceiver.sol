@@ -8,9 +8,11 @@ import { Database } from "./Database.sol";
 
 contract PaymentReceiver is IPaymentReceiver, Database {
     ISuperfluid private host; // host
-    IConstantFlowAgreementV1 private cfa; // the stored constant flow agreement class 
+    IConstantFlowAgreementV1 private cfa; // the stored constant flow agreement class
+
+    mapping(address => address) public flows; // mapping of flows from the host to the receiver
     
-    event CheckIn(address checkee, uint256 gateId, uint96 flowRate, ISuperToken token);
+    event CheckIn(address checkee, uint256 gateId, int96 flowRate, ISuperToken token);
     event CheckOut(address checkee, uint256 gateId);
 
      constructor(
@@ -28,11 +30,14 @@ contract PaymentReceiver is IPaymentReceiver, Database {
     function deleteGate(uint256 _gateId) public override {
         Gate memory gate = getGate(_gateId);
 
-        for (uint256 index = 0; index < gate.activeUsers.length; index++) {
-            address addr = gate.activeUsers[index];
+        uint256 index = 0;
+        for(index; index < gate.activeUsers; index++) {
+            address addr = gateUsers[_gateId][index];
             _deleteFlow(addr, gate.payee, onlyToken);
+            checkedIn[addr][_gateId] = false;
             emit CheckOut(addr , _gateId);
-        } 
+        }
+        gate.activeUsers = 0;
 
         super.deleteGate(_gateId);
     }
@@ -40,12 +45,12 @@ contract PaymentReceiver is IPaymentReceiver, Database {
     function checkIn(uint256 _gateId) external {
         Gate storage gate = gates[_gateId];
 
-        for (uint256 index = 0; index < gate.activeUsers.length; index++) {
-            require(gate.activeUsers[index] != msg.sender, string(abi.encodePacked("already checked in at: ", gate.name)));
-        }
+        require(checkedIn[msg.sender][_gateId] == false, "you are already checked in");
 
         _createFlow(gate.payee, gate.flowRate, onlyToken);
-        gate.activeUsers.push(msg.sender);
+        checkedIn[msg.sender][_gateId] = true;
+        gateUsers[_gateId][gate.activeUsers] = msg.sender;
+        gate.activeUsers++;
         emit CheckIn(msg.sender, _gateId, gate.flowRate, onlyToken);
     }
 
@@ -54,14 +59,9 @@ contract PaymentReceiver is IPaymentReceiver, Database {
 
         _deleteFlow(msg.sender, gate.payee, onlyToken);
 
-        for (uint256 index = 0; index < gate.activeUsers.length; index++) {
-            if (msg.sender == gate.activeUsers[index]) {
-                gate.activeUsers[index] = gate.activeUsers[gate.activeUsers.length - 1];
-                gate.activeUsers.pop();
+        checkedIn[msg.sender][_gateId] = false;
+        gate.activeUsers--;
 
-                break;
-            }
-        }
         emit CheckOut(msg.sender, _gateId);
     }
 
@@ -79,25 +79,43 @@ contract PaymentReceiver is IPaymentReceiver, Database {
         );
     }
 
-    function _createFlow(address _to, uint96 _flowRate, ISuperToken _token) internal {
-        if (_to == address(this) || _to == address(0)) return;
+    function _createFlow(address _to, int96 _flowRate, ISuperToken _token) internal {
+        require (_to != address(this) && _to != address(0));
 
-        /**
-         * @dev flows between two different addreses can only be created by a contract
-         * with superfluid operator permissions. 
-         */
-        host.callAgreement(
-            cfa,
-            abi.encodeWithSelector(
-                cfa.createFlowByOperator.selector,
-                _token,
-                msg.sender,
-                _to,
-                _flowRate,
-                new bytes(0)
-            ),
-            "0x"
-        );
+        (,int96 flowRate,,) = cfa.getFlow(_token, msg.sender, _to);
+
+        if(flowRate != 0){
+            host.callAgreement(
+                cfa,
+                abi.encodeWithSelector(
+                    cfa.updateFlowByOperator.selector,
+                    _token,
+                    msg.sender,
+                    _to,
+                    _flowRate + flowRate,
+                    new bytes(0)
+                ),
+                "0x"
+            );
+        }
+        else{
+            /**
+            * @dev flows between two different addreses can only be created by a contract
+            * with superfluid operator permissions. 
+            */
+            host.callAgreement(
+                cfa,
+                abi.encodeWithSelector(
+                    cfa.createFlowByOperator.selector,
+                    _token,
+                    msg.sender,
+                    _to,
+                    _flowRate,
+                    new bytes(0)
+                ),
+                "0x"
+            );
+        }   
     }
 
 }

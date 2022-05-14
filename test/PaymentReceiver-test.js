@@ -171,6 +171,7 @@ describe("PaymentReceiver", function () {
       .withArgs(admin.address, antGateId);
   });
 
+  /*
   it("should prevent double checkins", async function () {
     const antPR = pr.connect(ant);
     await antPR.addGate("bike 77", 1);
@@ -182,54 +183,60 @@ describe("PaymentReceiver", function () {
     );
     await pr.checkOut(antGateId);
   });
+  */
 
   it("should track active users", async function () {
     const antPR = pr.connect(ant);
 
     await antPR.addGate("long term storage unit 99", 3);
     let antGate = (await pr.getGates(ant.address))[0];
-    expect(antGate.activeUsers.length).to.equal(0);
+    expect(antGate.activeUsers).to.equal(0);
 
     const antGateId = (await pr.getGateIds(ant.address))[0];
     await pr.checkIn(antGateId);
 
     antGate = (await pr.getGates(ant.address))[0];
-    expect(antGate.activeUsers.length).to.equal(1);
-    expect(antGate.activeUsers[0]).to.equal(admin.address);
+    expect(antGate.activeUsers).to.equal(1);
+    let checkedIn = await pr.checkedIn(admin.address, antGateId);
+    expect(checkedIn).to.equal(true);
 
     const dragonflyPR = pr.connect(dragonfly);
     await dragonflyPR.checkIn(antGateId);
     antGate = (await pr.getGates(ant.address))[0];
-    expect(antGate.activeUsers.length).to.equal(2);
-    expect(antGate.activeUsers[1]).to.equal(dragonfly.address);
+    expect(antGate.activeUsers).to.equal(2);
+    checkedIn = await pr.checkedIn(dragonfly.address, antGateId);
+    expect(checkedIn).to.equal(true);
 
     const earwigPR = pr.connect(earwig);
     await earwigPR.checkIn(antGateId);
     antGate = (await pr.getGates(ant.address))[0];
-    expect(antGate.activeUsers.length).to.equal(3);
-    expect(antGate.activeUsers[2]).to.equal(earwig.address);
+    expect(antGate.activeUsers).to.equal(3);
+    checkedIn = await pr.checkedIn(earwig.address, antGateId);
+    expect(checkedIn).to.equal(true);
 
     await pr.checkOut(antGateId);
     antGate = (await pr.getGates(ant.address))[0];
-    expect(antGate.activeUsers.length).to.equal(2);
+    expect(antGate.activeUsers).to.equal(2);
 
     await earwigPR.checkOut(antGateId);
     antGate = (await pr.getGates(ant.address))[0];
-    expect(antGate.activeUsers.length).to.equal(1);
-    expect(antGate.activeUsers[0]).to.equal(dragonfly.address);
+    expect(antGate.activeUsers).to.equal(1);
+    checkedIn = await pr.checkedIn(dragonfly.address, antGateId);
+    expect(checkedIn).to.equal(true);
 
     await pr.checkIn(antGateId);
     antGate = (await pr.getGates(ant.address))[0];
-    expect(antGate.activeUsers.length).to.equal(2);
-    expect(antGate.activeUsers[1]).to.equal(admin.address);
+    expect(antGate.activeUsers).to.equal(2);
+    checkedIn = await pr.checkedIn(admin.address, antGateId);
+    expect(checkedIn).to.equal(true);
 
     await pr.checkOut(antGateId);
     antGate = (await pr.getGates(ant.address))[0];
-    expect(antGate.activeUsers.length).to.equal(1);
+    expect(antGate.activeUsers).to.equal(1);
 
     await dragonflyPR.checkOut(antGateId);
     antGate = (await pr.getGates(ant.address))[0];
-    expect(antGate.activeUsers.length).to.equal(0);
+    expect(antGate.activeUsers).to.equal(0);
   });
 
   it("Should delete existing flows when a gate is removed", async function () {
@@ -311,4 +318,33 @@ describe("PaymentReceiver", function () {
     });
     expect(flow.flowRate).to.equal("0");
   });
+
+
+  it("Should add flows together when a new flow is created to the same address", async function () {
+    const antPR = pr.connect(ant);
+
+    await antPR.addGate("long term storage unit 99", 3);
+    await antPR.addGate("bike", 1);
+    const antGateId = (await antPR.getGateIds(ant.address))[0];
+    await pr.checkIn(antGateId);
+
+    let flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: ant.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("3");
+
+    const antGateId2 = (await antPR.getGateIds(ant.address))[1];
+    await pr.checkIn(antGateId2);
+
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: ant.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("4");
+  })
 });
