@@ -288,7 +288,7 @@ describe("PaymentReceiver", function () {
 
     const criketPR = pr.connect(cricket);
     await criketPR.addGate("storage unit 1", 1);
-    const cricketGateId = (await beetlePR.getGateIds(cricket.address))[0];
+    const cricketGateId = (await criketPR.getGateIds(cricket.address))[0];
     await pr.checkIn(cricketGateId);
 
     let flow = await sf.cfaV1.getFlow({
@@ -346,5 +346,25 @@ describe("PaymentReceiver", function () {
       providerOrSigner: admin,
     });
     expect(flow.flowRate).to.equal("4");
+
+    await pr.checkOut(antGateId);
+
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: ant.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("1");
+
+    await pr.checkOut(antGateId2);
+
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: ant.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("0");
   })
 });

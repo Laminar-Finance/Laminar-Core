@@ -9,8 +9,6 @@ import { Database } from "./Database.sol";
 contract PaymentReceiver is IPaymentReceiver, Database {
     ISuperfluid private host; // host
     IConstantFlowAgreementV1 private cfa; // the stored constant flow agreement class
-
-    mapping(address => address) public flows; // mapping of flows from the host to the receiver
     
     event CheckIn(address checkee, uint256 gateId, int96 flowRate, ISuperToken token);
     event CheckOut(address checkee, uint256 gateId);
@@ -33,7 +31,7 @@ contract PaymentReceiver is IPaymentReceiver, Database {
         uint256 index = 0;
         for(index; index < gate.activeUsers; index++) {
             address addr = gateUsers[_gateId][index];
-            _deleteFlow(addr, gate.payee, onlyToken);
+            _deleteFlow(addr, gate.payee, gate.flowRate, onlyToken);
             checkedIn[addr][_gateId] = false;
             emit CheckOut(addr , _gateId);
         }
@@ -43,9 +41,9 @@ contract PaymentReceiver is IPaymentReceiver, Database {
     }
 
     function checkIn(uint256 _gateId) external {
-        Gate storage gate = gates[_gateId];
-
         require(checkedIn[msg.sender][_gateId] == false, "you are already checked in");
+
+        Gate storage gate = gates[_gateId];
 
         _createFlow(gate.payee, gate.flowRate, onlyToken);
         checkedIn[msg.sender][_gateId] = true;
@@ -55,9 +53,11 @@ contract PaymentReceiver is IPaymentReceiver, Database {
     }
 
     function checkOut(uint256 _gateId) external {
+        require(checkedIn[msg.sender][_gateId] == true, "you are not checked in");
+
         Gate storage gate = gates[_gateId];        
 
-        _deleteFlow(msg.sender, gate.payee, onlyToken);
+        _deleteFlow(msg.sender, gate.payee, gate.flowRate, onlyToken);
 
         checkedIn[msg.sender][_gateId] = false;
         gate.activeUsers--;
@@ -65,18 +65,38 @@ contract PaymentReceiver is IPaymentReceiver, Database {
         emit CheckOut(msg.sender, _gateId);
     }
 
-    function _deleteFlow(address _from, address _to, ISuperToken _token) internal {
-        host.callAgreement(
-            cfa,
-            abi.encodeWithSelector(
-                cfa.deleteFlowByOperator.selector,
-                _token,
-                _from,
-                _to,
-                new bytes(0)
-            ),
-            "0x"
-        );
+    function _deleteFlow(address _from, address _to, int96 _flowRate, ISuperToken _token) internal {
+        (,int96 flowRate,,) = cfa.getFlow(_token, _from, _to);
+        _flowRate = flowRate - _flowRate;
+
+
+        if(_flowRate != int96(0)) {
+            host.callAgreement(
+                cfa,
+                abi.encodeWithSelector(
+                    cfa.updateFlowByOperator.selector,
+                    _token,
+                    _from,
+                    _to,
+                    _flowRate,
+                    new bytes(0)
+                ),
+                "0x"
+            );
+        }
+        else{
+            host.callAgreement(
+                cfa,
+                abi.encodeWithSelector(
+                    cfa.deleteFlowByOperator.selector,
+                    _token,
+                    _from,
+                    _to,
+                    new bytes(0)
+                ),
+                "0x"
+            );
+        }
     }
 
     function _createFlow(address _to, int96 _flowRate, ISuperToken _token) internal {
