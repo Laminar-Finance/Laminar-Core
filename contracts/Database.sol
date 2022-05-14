@@ -26,6 +26,8 @@ contract Database {
     }
 
     function renameGate(uint256 _gateId, string memory _name) external {
+        require(gates[_gateId].payee == msg.sender, "cannot rename gate belonging to another merchant");
+        
         Gate storage gate = gates[_gateId];
      
         require(

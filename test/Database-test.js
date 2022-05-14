@@ -174,6 +174,34 @@ describe("Database", function () {
     await expect(pr.renameGate(32473472, "server #77")).to.be.reverted;
   });
 
+  it("Should prevent gate deletion by another address", async function () {
+    const PR = await ethers.getContractFactory("Database");
+    const pr = await PR.deploy(fauxDiax.address);
+    await pr.deployed();
+
+    await pr.addGate("truck 1", 1);
+    const gateId = (await pr.getGateIds(admin.address))[0];
+
+    const antPR = pr.connect(ant);
+    await expect(antPR.deleteGate(gateId)).to.be.revertedWith(
+      "cannot delete gate belonging to another merchant"
+    );
+  });
+
+  it.only("Should prevent gate renaming by another address", async function () {
+    const PR = await ethers.getContractFactory("Database");
+    const pr = await PR.deploy(fauxDiax.address);
+    await pr.deployed();
+
+    await pr.addGate("truck 1", 1);
+    const gateId = (await pr.getGateIds(admin.address))[0];
+
+    const antPR = pr.connect(ant);
+    await expect(antPR.renameGate(gateId, "antGate")).to.be.revertedWith(
+      "cannot rename gate belonging to another merchant"
+    );
+  });
+
   it("Should prevent double deletion", async function () {
     const PR = await ethers.getContractFactory("Database");
     const pr = await PR.deploy(fauxDiax.address);
