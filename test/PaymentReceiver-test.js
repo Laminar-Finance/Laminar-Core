@@ -217,6 +217,9 @@ describe("PaymentReceiver", function () {
     await pr.checkOut(antGateId);
     antGate = (await pr.getGates(ant.address))[0];
     expect(antGate.activeUsers).to.equal(2);
+    const gateUsers = await pr.getGateUsers(antGateId);
+    expect(gateUsers).to.contain(dragonfly.address);
+    expect(gateUsers).to.contain(earwig.address);
 
     await earwigPR.checkOut(antGateId);
     antGate = (await pr.getGates(ant.address))[0];
@@ -319,7 +322,6 @@ describe("PaymentReceiver", function () {
     expect(flow.flowRate).to.equal("0");
   });
 
-
   it("Should add flows together when a new flow is created to the same address", async function () {
     const antPR = pr.connect(ant);
 
@@ -366,5 +368,5 @@ describe("PaymentReceiver", function () {
       providerOrSigner: admin,
     });
     expect(flow.flowRate).to.equal("0");
-  })
+  });
 });
