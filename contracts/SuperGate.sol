@@ -73,6 +73,26 @@ contract SuperGate is SuperAppBase {
     }
 
 
+    function changeOwner(address newOwner) external {
+        require(msg.sender == owner, "only owner can change owner");
+        owner = newOwner;
+    }
+
+    function changeName(string calldata newName) external {
+        require(msg.sender == owner, "only owner can change name");
+        name = newName;
+    }
+
+    function changeAcceptedToken(ISuperToken newToken) external {
+        require(msg.sender == owner, "only owner can change accepted token");
+        acceptedToken = newToken;
+    }
+
+    function changeFlowRate(int96 newFlowRate) external {
+        require(msg.sender == owner, "only owner can change flow rate");
+        flowRate = newFlowRate;
+    }
+
     
     function beforeAgreementCreated(
         ISuperToken /*superToken*/,
