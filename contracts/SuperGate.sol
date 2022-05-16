@@ -76,8 +76,7 @@ contract SuperGate is SuperAppBase {
         // callbacks which you don't need and didn't implement.
         uint256 configWord =
             SuperAppDefinitions.APP_LEVEL_FINAL |
-            SuperAppDefinitions.AFTER_AGREEMENT_UPDATED_NOOP |
-            SuperAppDefinitions.BEFORE_AGREEMENT_TERMINATED_NOOP;
+            SuperAppDefinitions.AFTER_AGREEMENT_UPDATED_NOOP;
 
         host.registerApp(configWord);
 
