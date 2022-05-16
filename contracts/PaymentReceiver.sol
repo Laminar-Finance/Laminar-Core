@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import "./SuperGate.sol";
@@ -11,7 +12,7 @@ import {
 import { ISuperToken, ISuperfluid } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 
 
-contract NewDatabase is IPaymentReceiver {
+contract PaymentReceiver is IPaymentReceiver {
     ISuperfluid private host; // host
     IConstantFlowAgreementV1 private cfa; // the stored constant flow agreement class
     mapping(address => SuperGate) private addressToGate;
@@ -71,6 +72,27 @@ contract NewDatabase is IPaymentReceiver {
      * @dev Check out of the client and stop streaming payment
      */
     function checkOut(address superGate) external{
+        SuperGate gate = SuperGate(superGate);
+        require(checkedIn[msg.sender][gate], "not checked in");
 
+        checkedIn[msg.sender][gate] = false;
+
+
+        //May want to add some context instead of bytes 0
+        /**
+         * @dev flows between two different addreses can only be created by a contract
+         * with superfluid operator permissions. 
+         */
+        host.callAgreement(
+            cfa,
+            abi.encodeWithSelector(
+                cfa.deleteFlowByOperator.selector,
+                gate.acceptedToken(),
+                msg.sender,
+                address(gate),
+                new bytes(0)
+            ),
+            "0x"
+        );
     }
 }

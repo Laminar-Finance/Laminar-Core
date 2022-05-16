@@ -91,10 +91,10 @@ contract SuperGate is SuperAppBase {
     }
 
     function afterAgreementCreated(
-        ISuperToken superToken,
+        ISuperToken /*superToken*/,
         address /*agreementClass*/,
-        bytes32 agreementId,
-        bytes calldata agreementData,
+        bytes32 /*agreementId*/,
+        bytes calldata /*agreementData*/,
         bytes calldata /*cbdata*/,
         bytes calldata /*ctx*/
     )
@@ -103,10 +103,10 @@ contract SuperGate is SuperAppBase {
         override
         returns (bytes memory /*newCtx*/)
     {
-        (address user, address receiver) = abi.decode(agreementData, (address, address));
-        cfa.getFlowByID(superToken, agreementId);
+        //(address user, address receiver) = abi.decode(agreementData, (address, address));
+        //cfa.getFlowByID(superToken, agreementId);
         // decode Context - store full context as uData variable for easy visualization purposes
-        ISuperfluid.Context memory decompiledContext;
+        //ISuperfluid.Context memory decompiledContext;
 
         //set userData variable to decoded value
         //for now, this value is hardcoded as a string - this will be made clear in flow creation scripts within the tutorial
