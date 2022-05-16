@@ -46,6 +46,7 @@ contract PaymentReceiver is IPaymentReceiver {
         SuperGate gate = SuperGate(superGate);
         require(!checkedIn[msg.sender][gate], "already checked in");
 
+        //Might want to move this to afterAgreementCreated
         checkedIn[msg.sender][gate] = true;
 
 
@@ -75,6 +76,7 @@ contract PaymentReceiver is IPaymentReceiver {
         SuperGate gate = SuperGate(superGate);
         require(checkedIn[msg.sender][gate], "not checked in");
 
+        //Might want to move this to afterAgreementTerminated
         checkedIn[msg.sender][gate] = false;
 
 
