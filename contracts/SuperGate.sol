@@ -156,7 +156,7 @@ contract SuperGate is SuperAppBase {
         if(inFlowRate == int96(0)){
             newCtx = cfaV1.deleteFlowWithCtx(newCtx, address(this), owner, acceptedToken);
         }
-        else if(outFlowRate == int96(0)){
+        else if(outFlowRate != int96(0)){
             newCtx = cfaV1.updateFlowWithCtx(ctx, owner, acceptedToken, inFlowRate);
         }
         else{
