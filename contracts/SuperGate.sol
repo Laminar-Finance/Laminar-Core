@@ -196,15 +196,7 @@ contract SuperGate is SuperAppBase {
         override
         returns (bytes memory /*newCtx*/)
     {
-        //(address user, address receiver) = abi.decode(agreementData, (address, address));
-        //cfa.getFlowByID(superToken, agreementId);
-        // decode Context - store full context as uData variable for easy visualization purposes
-        //ISuperfluid.Context memory decompiledContext;
 
-        //set userData variable to decoded value
-        //for now, this value is hardcoded as a string - this will be made clear in flow creation scripts within the tutorial
-        //this string will serve as a message on an 'NFT billboard' when a flow is created with recipient = tradeableCashflow
-        //it will be displayed on a front end for assistance in userData explanation
         return _updateOutflow(ctx);
     }
 

@@ -15,7 +15,7 @@ import { ISuperToken, ISuperfluid } from "@superfluid-finance/ethereum-contracts
 contract PaymentReceiver is IPaymentReceiver {
     ISuperfluid private host; // host
     IConstantFlowAgreementV1 private cfa; // the stored constant flow agreement class
-    mapping(address => SuperGate) private addressToGate;
+    mapping(address => SuperGate[]) private addressToGate;
     mapping(SuperGate => address) private gateToAddress;
 
     mapping(address => mapping(SuperGate => bool)) private checkedIn;
@@ -28,7 +28,7 @@ contract PaymentReceiver is IPaymentReceiver {
     function addGate(string calldata _name, int96 _flowRate, ISuperToken _token) external returns (address){
         SuperGate newGate = new SuperGate(host, cfa, _name, msg.sender, _token, _flowRate);
         gateToAddress[newGate] = msg.sender;
-        addressToGate[msg.sender] = newGate;
+        addressToGate[msg.sender].push(newGate);
         return address(newGate);
     }
 
@@ -96,5 +96,23 @@ contract PaymentReceiver is IPaymentReceiver {
             ),
             "0x"
         );
+    }
+
+
+    /*
+    * ------------------------------------------------------------
+    * External view functions
+    * ------------------------------------------------------------
+    */
+
+    function gatesOwnedBy(address _owner) external view returns (address[] memory result){
+        result = new address[](addressToGate[_owner].length);
+        for(uint i = 0; i < addressToGate[_owner].length; i++){
+            result[i] = address(addressToGate[_owner][i]);
+        }
+    }
+
+    function getOwner(address _gate) external view returns (address){
+        return gateToAddress[SuperGate(_gate)];
     }
 }
