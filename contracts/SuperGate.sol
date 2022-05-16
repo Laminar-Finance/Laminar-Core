@@ -71,8 +71,7 @@ contract SuperGate is SuperAppBase {
         // callbacks which you don't need and didn't implement.
         uint256 configWord =
             SuperAppDefinitions.APP_LEVEL_FINAL |
-            SuperAppDefinitions.BEFORE_AGREEMENT_CREATED_NOOP |
-            SuperAppDefinitions.BEFORE_AGREEMENT_UPDATED_NOOP |
+            SuperAppDefinitions.AFTER_AGREEMENT_UPDATED_NOOP |
             SuperAppDefinitions.BEFORE_AGREEMENT_TERMINATED_NOOP;
 
         host.registerApp(configWord);
@@ -233,14 +232,15 @@ contract SuperGate is SuperAppBase {
         bytes32 /*agreementId*/,
         bytes calldata /*agreementData*/,
         bytes calldata /*cbdata*/,
-        bytes calldata /*ctx*/
+        bytes calldata ctx
     )
         external
         virtual
         override
         returns (bytes memory /*newCtx*/)
     {
-        revert("Unsupported callback - After Agreement Updated");
+        return ctx;
+        //revert("Unsupported callback - After Agreement Updated");
     }
 
     function beforeAgreementTerminated(
@@ -248,7 +248,7 @@ contract SuperGate is SuperAppBase {
         address /*agreementClass*/,
         bytes32 /*agreementId*/,
         bytes calldata /*agreementData*/,
-        bytes calldata /*ctx*/
+        bytes calldata ctx
     )
         external
         view
@@ -256,7 +256,8 @@ contract SuperGate is SuperAppBase {
         override
         returns (bytes memory /*cbdata*/)
     {
-        revert("Unsupported callback -  Before Agreement Terminated");
+        return ctx;
+        //revert("Unsupported callback -  Before Agreement Terminated");
     }
 
     /*
