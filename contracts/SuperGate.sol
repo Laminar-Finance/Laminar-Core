@@ -103,6 +103,7 @@ contract SuperGate is SuperAppBase {
     /*
     * ------------------------------------------------------------
     * Super app callback functions
+    * Note Any attempt to tamper with the value of ctx or failing to give the right ctx will result in a Jailed App.
     * ------------------------------------------------------------
     */
 
