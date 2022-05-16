@@ -35,22 +35,23 @@ contract SuperGate is SuperAppBase {
     ISuperfluid private host; // host
     IConstantFlowAgreementV1 private cfa; // the stored constant flow agreement class
     
-    struct Gate{
-        string name;
-        address owner;
-        ISuperToken acceptedToken; // accepted token
-        int96 flowRate;
-    }
+    string public name;
+    address public owner;
+    ISuperToken public acceptedToken; // accepted token
+    int96 public flowRate;
 
-    Gate private gate;
+
     
 
 
 
-    constructor(ISuperfluid _host, IConstantFlowAgreementV1 _cfa, Gate memory _gate) {
+    constructor(ISuperfluid _host, IConstantFlowAgreementV1 _cfa, string memory _name, address _owner, ISuperToken _acceptedToken, int96 _flowRate) {
         host = _host;
         cfa = _cfa;
-        gate = _gate;
+        name = _name;
+        owner = _owner;
+        acceptedToken = _acceptedToken;
+        flowRate = _flowRate;
 
         // by default, all 6 callbacks defined in the ISuperApp interface
         // are forwarded to a SuperApp.
