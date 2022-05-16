@@ -214,7 +214,7 @@ contract SuperGate is SuperAppBase {
         address /*agreementClass*/,
         bytes32 /*agreementId*/,
         bytes calldata /*agreementData*/,
-        bytes calldata /*ctx*/
+        bytes calldata ctx
     )
         external
         view
@@ -223,7 +223,8 @@ contract SuperGate is SuperAppBase {
         returns (bytes memory /*cbdata*/)
     {
         //Only allow owner to update agreement using context
-        revert("Unsupported callback - Before Agreement updated");
+        ISuperfluid.Context memory decompiledContext = host.decodeCtx(ctx);
+        require(decompiledContext.msgSender == owner, "Only owner can update agreement");
     }
 
     function afterAgreementUpdated(
