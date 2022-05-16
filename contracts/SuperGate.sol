@@ -174,7 +174,7 @@ contract SuperGate is SuperAppBase {
 
     
     function beforeAgreementCreated(
-        ISuperToken /*superToken*/,
+        ISuperToken superToken,
         address /*agreementClass*/,
         bytes32 /*agreementId*/,
         bytes calldata agreementData,
@@ -186,6 +186,7 @@ contract SuperGate is SuperAppBase {
         override
         returns (bytes memory /*cbdata*/)
     {
+        require(superToken == acceptedToken, "Token must be accepted");
         require(!isPaused, "Gate is paused");
         // Require that the incoming flow rate is equal to the rate set by the owner
         (address sender, address receiver) = abi.decode(agreementData, (address, address));
