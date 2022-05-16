@@ -18,7 +18,6 @@ contract PaymentReceiver is IPaymentReceiver {
     mapping(address => SuperGate[]) private addressToGate;
     mapping(SuperGate => address) private gateToAddress;
 
-    mapping(address => mapping(SuperGate => bool)) private checkedIn;
 
     constructor(address _host, address _cfa){
         host = ISuperfluid(_host);
@@ -44,11 +43,6 @@ contract PaymentReceiver is IPaymentReceiver {
      */
     function checkIn(address superGate) external{
         SuperGate gate = SuperGate(superGate);
-        require(!checkedIn[msg.sender][gate], "already checked in");
-
-        //Might want to move this to afterAgreementCreated
-        checkedIn[msg.sender][gate] = true;
-
 
         //May want to add some context instead of bytes 0
         /**
@@ -74,11 +68,6 @@ contract PaymentReceiver is IPaymentReceiver {
      */
     function checkOut(address superGate) external{
         SuperGate gate = SuperGate(superGate);
-        require(checkedIn[msg.sender][gate], "not checked in");
-
-        //Might want to move this to afterAgreementTerminated
-        checkedIn[msg.sender][gate] = false;
-
 
         //May want to add some context instead of bytes 0
         /**

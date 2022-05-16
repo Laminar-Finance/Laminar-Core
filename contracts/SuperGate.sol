@@ -48,6 +48,10 @@ contract SuperGate is SuperAppBase {
     address public owner;
     ISuperToken public acceptedToken; // accepted token
     int96 public flowRate;
+    bool public isPaused;
+
+    mapping(address => bool) private checkedIn;
+
 
     constructor(ISuperfluid _host, IConstantFlowAgreementV1 _cfa, string memory _name, address _owner, ISuperToken _acceptedToken, int96 _flowRate) {
         require(flowRate > 0, "flow rate must be positive");
@@ -58,6 +62,7 @@ contract SuperGate is SuperAppBase {
         owner = _owner;
         acceptedToken = _acceptedToken;
         flowRate = _flowRate;
+        isPaused = false;
 
         // by default, all 6 callbacks defined in the ISuperApp interface
         // are forwarded to a SuperApp.
@@ -123,6 +128,11 @@ contract SuperGate is SuperAppBase {
         flowRate = newFlowRate;
     }
 
+    function pause() external {
+        require(msg.sender == owner, "only owner can pause");
+        isPaused = true;
+    }
+
 
 
     /*
@@ -177,27 +187,30 @@ contract SuperGate is SuperAppBase {
         override
         returns (bytes memory /*cbdata*/)
     {
+        require(!isPaused, "Gate is paused");
         // Require that the incoming flow rate is equal to the rate set by the owner
-        (, address receiver) = abi.decode(agreementData, (address, address));
+        (address sender, address receiver) = abi.decode(agreementData, (address, address));
         (,int96 _flowRate,,) = cfa.getFlow(acceptedToken, address(this), owner);
-        require(_flowRate == flowRate);
+        require(_flowRate == flowRate, "Flow rate must be equal to the flow rate set by the owner");
+        require(checkedIn[sender], "You are not checked in!");
     }
 
     function afterAgreementCreated(
         ISuperToken /*superToken*/,
         address /*agreementClass*/,
         bytes32 /*agreementId*/,
-        bytes calldata /*agreementData*/,
+        bytes calldata agreementData,
         bytes calldata /*cbdata*/,
         bytes calldata ctx
     )
         external
         virtual
         override
-        returns (bytes memory /*newCtx*/)
+        returns (bytes memory newCtx)
     {
-
-        return _updateOutflow(ctx);
+        (address sender,) = abi.decode(agreementData, (address, address));
+        newCtx = _updateOutflow(ctx);
+        checkedIn[sender] = true;
     }
 
     function beforeAgreementUpdated(
@@ -239,7 +252,7 @@ contract SuperGate is SuperAppBase {
         ISuperToken /*superToken*/,
         address /*agreementClass*/,
         bytes32 /*agreementId*/,
-        bytes calldata /*agreementData*/,
+        bytes calldata agreementData,
         bytes calldata ctx
     )
         external
@@ -248,8 +261,9 @@ contract SuperGate is SuperAppBase {
         override
         returns (bytes memory /*cbdata*/)
     {
+        (address sender,) = abi.decode(agreementData, (address, address));
+        require(checkedIn[sender], "You are not checked in!");
         return ctx;
-        //revert("Unsupported callback -  Before Agreement Terminated");
     }
 
     /*
@@ -262,16 +276,18 @@ contract SuperGate is SuperAppBase {
         ISuperToken /*superToken*/,
         address /*agreementClass*/,
         bytes32 /*agreementId*/,
-        bytes calldata /*agreementData*/,
+        bytes calldata agreementData,
         bytes calldata /*cbdata*/,
         bytes calldata ctx
     )
         external
         virtual
         override
-        returns (bytes memory /*newCtx*/)
+        returns (bytes memory newCtx)
     {
-        _updateOutflow(ctx);
+       (address sender,) = abi.decode(agreementData, (address, address));
+        newCtx = _updateOutflow(ctx);
+        checkedIn[sender] = false;
     }
     
 
