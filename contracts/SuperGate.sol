@@ -35,6 +35,9 @@ contract SuperGate is SuperAppBase {
     ISuperfluid private host; // host
     IConstantFlowAgreementV1 private cfa; // the stored constant flow agreement class
     
+    using CFAv1Library for CFAv1Library.InitData;
+    CFAv1Library.InitData public cfaV1; //initialize cfaV1 variable
+
     /*
     * ------------------------------------------------------------
     * Gate information
@@ -47,6 +50,8 @@ contract SuperGate is SuperAppBase {
     int96 public flowRate;
 
     constructor(ISuperfluid _host, IConstantFlowAgreementV1 _cfa, string memory _name, address _owner, ISuperToken _acceptedToken, int96 _flowRate) {
+        require(flowRate > 0, "flow rate must be positive");
+        require(owner != address(0), "owner cannot be 0");
         host = _host;
         cfa = _cfa;
         name = _name;
@@ -71,6 +76,18 @@ contract SuperGate is SuperAppBase {
             SuperAppDefinitions.BEFORE_AGREEMENT_TERMINATED_NOOP;
 
         host.registerApp(configWord);
+
+        //initialize InitData struct, and set equal to cfaV1
+        cfaV1 = CFAv1Library.InitData(
+        host,
+        //here, we are deriving the address of the CFA using the host contract
+        IConstantFlowAgreementV1(
+            address(host.getAgreementClass(
+                    keccak256("org.superfluid-finance.agreements.ConstantFlowAgreement.v1")
+                ))
+            )
+        );
+
     }
 
     /*
@@ -81,6 +98,14 @@ contract SuperGate is SuperAppBase {
 
     function changeOwner(address newOwner) external {
         require(msg.sender == owner, "only owner can change owner");
+        require(newOwner != owner, "new owner must be different from current owner");
+        require(newOwner != address(0), "New receiver is zero address");
+        require(!host.isApp(ISuperApp(newOwner)), "New receiver can not be a superApp");
+        (,int96 outFlowRate,,) = cfa.getFlow(acceptedToken, address(this), owner);
+        if (outFlowRate != 0) {
+            cfaV1.deleteFlow(address(this), owner, acceptedToken);
+            cfaV1.createFlow(newOwner, acceptedToken, cfa.getNetFlow(acceptedToken, address(this)));
+        }
         owner = newOwner;
     }
 
@@ -100,6 +125,38 @@ contract SuperGate is SuperAppBase {
     }
 
 
+
+    /*
+    * ------------------------------------------------------------
+    * internal functions
+    * ------------------------------------------------------------
+    */
+
+    function _updateOutflow(bytes calldata ctx) internal returns (bytes memory newCtx) {
+        newCtx = ctx;
+
+        // Inflow is always > 0 and equal to set flow rate here, because of the check in beforeAgreementCreated
+        // netflow = inflow - outflow
+        // inflow = netflow + outflow
+        // outflow = inflow - netflow
+
+        int96 netFlowRate = cfa.getNetFlow(acceptedToken, address(this));
+        (,int96 outFlowRate,,) = cfa.getFlow(acceptedToken, address(this), owner);
+        int96 inFlowRate = netFlowRate + outFlowRate;
+
+        if(inFlowRate == int96(0)){
+            newCtx = cfaV1.deleteFlowWithCtx(newCtx, address(this), owner, acceptedToken);
+        }
+        else if(outFlowRate == int96(0)){
+            newCtx = cfaV1.updateFlowWithCtx(ctx, owner, acceptedToken, inFlowRate);
+        }
+        else{
+            newCtx = cfaV1.createFlowWithCtx(ctx, owner, acceptedToken, inFlowRate);
+        }
+
+    }
+
+
     /*
     * ------------------------------------------------------------
     * Super app callback functions
@@ -112,7 +169,7 @@ contract SuperGate is SuperAppBase {
         ISuperToken /*superToken*/,
         address /*agreementClass*/,
         bytes32 /*agreementId*/,
-        bytes calldata /*agreementData*/,
+        bytes calldata agreementData,
         bytes calldata /*ctx*/
     )
         external
@@ -121,7 +178,10 @@ contract SuperGate is SuperAppBase {
         override
         returns (bytes memory /*cbdata*/)
     {
-        revert("Unsupported callback - Before Agreement Created");
+        // Require that the incoming flow rate is equal to the rate set by the owner
+        (, address receiver) = abi.decode(agreementData, (address, address));
+        (,int96 _flowRate,,) = cfa.getFlow(acceptedToken, address(this), owner);
+        require(_flowRate == flowRate);
     }
 
     function afterAgreementCreated(
@@ -130,7 +190,7 @@ contract SuperGate is SuperAppBase {
         bytes32 /*agreementId*/,
         bytes calldata /*agreementData*/,
         bytes calldata /*cbdata*/,
-        bytes calldata /*ctx*/
+        bytes calldata ctx
     )
         external
         virtual
@@ -146,7 +206,7 @@ contract SuperGate is SuperAppBase {
         //for now, this value is hardcoded as a string - this will be made clear in flow creation scripts within the tutorial
         //this string will serve as a message on an 'NFT billboard' when a flow is created with recipient = tradeableCashflow
         //it will be displayed on a front end for assistance in userData explanation
-        revert("Unsupported callback - After Agreement Created");
+        return _updateOutflow(ctx);
     }
 
     function beforeAgreementUpdated(
@@ -162,6 +222,7 @@ contract SuperGate is SuperAppBase {
         override
         returns (bytes memory /*cbdata*/)
     {
+        //Only allow owner to update agreement using context
         revert("Unsupported callback - Before Agreement updated");
     }
 
@@ -209,14 +270,14 @@ contract SuperGate is SuperAppBase {
         bytes32 /*agreementId*/,
         bytes calldata /*agreementData*/,
         bytes calldata /*cbdata*/,
-        bytes calldata /*ctx*/
+        bytes calldata ctx
     )
         external
         virtual
         override
         returns (bytes memory /*newCtx*/)
     {
-        revert("Unsupported callback - After Agreement Terminated");
+        _updateOutflow(ctx);
     }
     
 
