@@ -35,15 +35,16 @@ contract SuperGate is SuperAppBase {
     ISuperfluid private host; // host
     IConstantFlowAgreementV1 private cfa; // the stored constant flow agreement class
     
+    /*
+    * ------------------------------------------------------------
+    * Gate information
+    * ------------------------------------------------------------
+    */
+
     string public name;
     address public owner;
     ISuperToken public acceptedToken; // accepted token
     int96 public flowRate;
-
-
-    
-
-
 
     constructor(ISuperfluid _host, IConstantFlowAgreementV1 _cfa, string memory _name, address _owner, ISuperToken _acceptedToken, int96 _flowRate) {
         host = _host;
@@ -72,6 +73,11 @@ contract SuperGate is SuperAppBase {
         host.registerApp(configWord);
     }
 
+    /*
+    * ------------------------------------------------------------
+    * Owner only functions
+    * ------------------------------------------------------------
+    */
 
     function changeOwner(address newOwner) external {
         require(msg.sender == owner, "only owner can change owner");
@@ -92,6 +98,13 @@ contract SuperGate is SuperAppBase {
         require(msg.sender == owner, "only owner can change flow rate");
         flowRate = newFlowRate;
     }
+
+
+    /*
+    * ------------------------------------------------------------
+    * Super app callback functions
+    * ------------------------------------------------------------
+    */
 
     
     function beforeAgreementCreated(
@@ -183,6 +196,12 @@ contract SuperGate is SuperAppBase {
         revert("Unsupported callback -  Before Agreement Terminated");
     }
 
+    /*
+    * ------------------------------------------------------------
+    * Note: Super Apps cannot revert in the termination callback (afterAgreementTerminated())
+    * Additionally, there is a gas limit of 30,000. Failure to follow these rules will result in the super app becoming jailed.
+    * ------------------------------------------------------------
+    */
     function afterAgreementTerminated(
         ISuperToken /*superToken*/,
         address /*agreementClass*/,
