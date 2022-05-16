@@ -190,7 +190,7 @@ contract SuperGate is SuperAppBase {
         require(!isPaused, "Gate is paused");
         // Require that the incoming flow rate is equal to the rate set by the owner
         (address sender, address receiver) = abi.decode(agreementData, (address, address));
-        (,int96 _flowRate,,) = cfa.getFlow(acceptedToken, address(this), owner);
+        (,int96 _flowRate,,) = cfa.getFlow(acceptedToken, sender, address(this));
         require(_flowRate == flowRate, "Flow rate must be equal to the flow rate set by the owner");
         require(checkedIn[sender], "You are not checked in!");
     }
