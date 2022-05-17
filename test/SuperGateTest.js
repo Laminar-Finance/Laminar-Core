@@ -5,6 +5,7 @@ const daiABI = require("./abis/fDAIABI");
 const deployFramework = require("@superfluid-finance/ethereum-contracts/scripts/deploy-framework");
 const deployTestToken = require("@superfluid-finance/ethereum-contracts/scripts/deploy-test-token");
 const deploySuperToken = require("@superfluid-finance/ethereum-contracts/scripts/deploy-super-token");
+const { parseTransaction } = require("ethers/lib/utils");
 
 const provider = web3;
 
@@ -92,7 +93,7 @@ describe("SuperGate", function () {
     let transferOperation = await daix.transfer({
       sender: admin.address,
       receiver: dragonfly.address,
-      amount: 400,
+      amount: 1000,
     });
     await transferOperation.exec(admin);
     daixBal = await daix.balanceOf({
@@ -104,7 +105,7 @@ describe("SuperGate", function () {
     transferOperation = await daix.transfer({
       sender: admin.address,
       receiver: earwig.address,
-      amount: 240,
+      amount: 1000,
     });
     await transferOperation.exec(admin);
     daixBal = await daix.balanceOf({
@@ -148,6 +149,7 @@ describe("SuperGate", function () {
 
     const antSG = await ethers.getContractAt("SuperGate", antSGAddress, admin);
 
+    pr.connect(admin);
     await pr.checkIn(antSGAddress);
 
     flow = await sf.cfaV1.getFlow({
@@ -176,5 +178,93 @@ describe("SuperGate", function () {
 
   });
 
+  it("Should prevent double checkins", async function () {
+    let flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: ant.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("0");
+    
+    const antPR = pr.connect(ant);
+    await antPR.addGate("bike 1", 1, daix.address);
+    const antSGAddress = (await antPR.gatesOwnedBy(ant.address))[0];
+
+    const antSG = await ethers.getContractAt("SuperGate", antSGAddress, admin);
+
+    pr.connect(admin);
+    await pr.checkIn(antSGAddress);
+
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: antSGAddress,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("1");
+
+    let checkedIn  = await antSG.isCheckedIn(admin.address);
+    expect(checkedIn).to.equal(true);
+
+    await expect(pr.checkIn(antSGAddress)).to.be.revertedWith("Already checked in");
+    await pr.checkOut(antSGAddress);
+  });
+
+  it("Should redirect all flows to the owner", async function () {
+    let flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: ant.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("0");
+    
+    const antPR = pr.connect(ant);
+    await antPR.addGate("bike 1", 1, daix.address);
+    const antSGAddress = (await antPR.gatesOwnedBy(ant.address))[0];
+
+    const antSG = await ethers.getContractAt("SuperGate", antSGAddress, admin);
+
+    pr.connect(admin);
+
+    await pr.checkIn(antSGAddress);
+
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: antSGAddress,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("1");
+
+    await pr.connect(earwig).checkIn(antSGAddress);
+
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: earwig.address,
+      receiver: antSGAddress,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("1");
+
+    await pr.connect(dragonfly).checkIn(antSGAddress);
+
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: dragonfly.address,
+      receiver: antSGAddress,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("1");
+
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: antSGAddress,
+      receiver: ant.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("3");
+  });
 
 });

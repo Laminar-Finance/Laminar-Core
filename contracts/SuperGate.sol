@@ -190,7 +190,7 @@ contract SuperGate is SuperAppBase {
         require(!isPaused, "Gate is paused");
         require(agreementClass == address(cfa), "Agreement class must be the Constant Flow Agreement");
         (address sender,) = abi.decode(agreementData, (address, address));
-        require(!checkedIn[sender], "You are already checked in!");
+        require(!checkedIn[sender], "Already checked in");
     }
 
     function afterAgreementCreated(
@@ -266,7 +266,7 @@ contract SuperGate is SuperAppBase {
         returns (bytes memory /*cbdata*/)
     {
         (address sender,) = abi.decode(agreementData, (address, address));
-        require(checkedIn[sender], "You are not checked in!");
+        require(checkedIn[sender], "Not checked in");
         return ctx;
     }
 

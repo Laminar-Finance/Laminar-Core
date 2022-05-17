@@ -43,6 +43,7 @@ contract PaymentReceiver is IPaymentReceiver {
      */
     function checkIn(address superGate) external{
         SuperGate gate = SuperGate(superGate);
+        require(!gate.isCheckedIn(msg.sender), "Already checked in");
         ISuperToken token = ISuperToken(gate.acceptedToken());
         int96 flowRate = int96(gate.flowRate());        
 
@@ -70,6 +71,7 @@ contract PaymentReceiver is IPaymentReceiver {
      */
     function checkOut(address superGate) external{
         SuperGate gate = SuperGate(superGate);
+        require(gate.isCheckedIn(msg.sender), "Not checked in");
 
         //May want to add some context instead of bytes 0
         /**
