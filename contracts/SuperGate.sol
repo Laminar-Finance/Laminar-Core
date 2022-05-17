@@ -54,8 +54,8 @@ contract SuperGate is SuperAppBase {
 
 
     constructor(ISuperfluid _host, IConstantFlowAgreementV1 _cfa, string memory _name, address _owner, ISuperToken _acceptedToken, int96 _flowRate) {
-        require(flowRate > 0, "flow rate must be positive");
-        require(owner != address(0), "owner cannot be 0");
+        require(_flowRate > int96(0), "flow rate must be positive");
+        require(_owner != address(0), "owner cannot be 0");
         host = _host;
         cfa = _cfa;
         name = _name;
@@ -175,8 +175,8 @@ contract SuperGate is SuperAppBase {
     
     function beforeAgreementCreated(
         ISuperToken superToken,
-        address /*agreementClass*/,
-        bytes32 /*agreementId*/,
+        address agreementClass,
+        bytes32 agreementId,
         bytes calldata agreementData,
         bytes calldata /*ctx*/
     )
@@ -188,11 +188,9 @@ contract SuperGate is SuperAppBase {
     {
         require(superToken == acceptedToken, "Token must be accepted");
         require(!isPaused, "Gate is paused");
-        // Require that the incoming flow rate is equal to the rate set by the owner
-        (address sender, address receiver) = abi.decode(agreementData, (address, address));
-        (,int96 _flowRate,,) = cfa.getFlow(acceptedToken, sender, address(this));
-        require(_flowRate == flowRate, "Flow rate must be equal to the flow rate set by the owner");
-        require(checkedIn[sender], "You are not checked in!");
+        require(agreementClass == address(cfa), "Agreement class must be the Constant Flow Agreement");
+        (address sender,) = abi.decode(agreementData, (address, address));
+        require(!checkedIn[sender], "You are already checked in!");
     }
 
     function afterAgreementCreated(
@@ -209,8 +207,14 @@ contract SuperGate is SuperAppBase {
         returns (bytes memory newCtx)
     {
         (address sender,) = abi.decode(agreementData, (address, address));
-        newCtx = _updateOutflow(ctx);
-        checkedIn[sender] = true;
+        (,int96 _flowRate,,) = cfa.getFlow(acceptedToken, sender, address(this));
+        if(_flowRate != flowRate){
+            newCtx = cfaV1.deleteFlowWithCtx(ctx, sender, address(this), acceptedToken);
+        }
+        else{
+            newCtx = _updateOutflow(ctx);
+            checkedIn[sender] = true;
+        }
     }
 
     function beforeAgreementUpdated(
@@ -289,6 +293,16 @@ contract SuperGate is SuperAppBase {
         newCtx = _updateOutflow(ctx);
         checkedIn[sender] = false;
     }
+
+
+    /*
+    * ------------------------------------------------------------
+    * External View Functions
+    * ------------------------------------------------------------
+    */
     
+    function isCheckedIn(address user) external view returns (bool) {
+        return checkedIn[user];
+    }
 
 }

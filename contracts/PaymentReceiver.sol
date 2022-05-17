@@ -43,6 +43,8 @@ contract PaymentReceiver is IPaymentReceiver {
      */
     function checkIn(address superGate) external{
         SuperGate gate = SuperGate(superGate);
+        ISuperToken token = ISuperToken(gate.acceptedToken());
+        int96 flowRate = int96(gate.flowRate());        
 
         //May want to add some context instead of bytes 0
         /**
@@ -53,10 +55,10 @@ contract PaymentReceiver is IPaymentReceiver {
             cfa,
             abi.encodeWithSelector(
                 cfa.createFlowByOperator.selector,
-                gate.acceptedToken(),
+                token,
                 msg.sender,
                 address(gate),
-                gate.flowRate(),
+                flowRate,
                 new bytes(0)
             ),
             "0x"
