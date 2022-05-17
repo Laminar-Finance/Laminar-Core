@@ -265,6 +265,156 @@ describe("SuperGate", function () {
       providerOrSigner: admin,
     });
     expect(flow.flowRate).to.equal("3");
+
+    await pr.connect(dragonfly).checkOut(antSGAddress);
+
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: dragonfly.address,
+      receiver: antSGAddress,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("0");
+
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: antSGAddress,
+      receiver: ant.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("2");
+
+    await pr.connect(earwig).checkOut(antSGAddress);
+
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: earwig.address,
+      receiver: antSGAddress,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("0");
+
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: antSGAddress,
+      receiver: ant.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("1");
+
+    await pr.connect(admin).checkOut(antSGAddress);
+
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: antSGAddress,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("0");
+
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: antSGAddress,
+      receiver: ant.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("0");
+
+  });
+
+
+  it("Should checkin/checkout a user when directly creating/deleting a flow to the gate", async function () {
+    let flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: ant.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("0");
+    
+    const antPR = pr.connect(ant);
+    await antPR.addGate("bike 1", 1, daix.address);
+    const antSGAddress = (await antPR.gatesOwnedBy(ant.address))[0];
+
+    const antSG = await ethers.getContractAt("SuperGate", antSGAddress, admin);
+
+    await (await sf.cfaV1.createFlow({
+      sender: admin.address,
+      receiver: antSGAddress,
+      superToken: daix.address,
+      flowRate: "1",
+      userData: "",
+    })).exec(admin);
+
+
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: antSGAddress,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("1");
+
+    checkedIn  = await antSG.isCheckedIn(admin.address);
+    expect(checkedIn).to.equal(true);
+
+    await (await sf.cfaV1.deleteFlow({
+      sender: admin.address,
+      receiver: antSGAddress,
+      superToken: daix.address,
+      userData: "",
+    })).exec(admin);
+
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: antSGAddress,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("0");
+
+    checkedIn  = await antSG.isCheckedIn(admin.address);
+    expect(checkedIn).to.equal(false);
+
+
+  });
+
+
+
+  it("Should not checkin a user when directly creating a flow with an incorrect flow rate", async function () {
+    let flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: ant.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("0");
+    
+    const antPR = pr.connect(ant);
+    await antPR.addGate("bike 1", 1, daix.address);
+    const antSGAddress = (await antPR.gatesOwnedBy(ant.address))[0];
+
+    const antSG = await ethers.getContractAt("SuperGate", antSGAddress, admin);
+
+    await (await sf.cfaV1.createFlow({
+      sender: admin.address,
+      receiver: antSGAddress,
+      superToken: daix.address,
+      flowRate: "10",
+      userData: "",
+    })).exec(admin);
+
+
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: antSGAddress,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("0");
+
+    checkedIn  = await antSG.isCheckedIn(admin.address);
+    expect(checkedIn).to.equal(false);
   });
 
 });
