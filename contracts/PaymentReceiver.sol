@@ -31,12 +31,6 @@ contract PaymentReceiver is IPaymentReceiver {
         return address(newGate);
     }
 
-    // Remove gate, calls function in SuperGate that will selfdestruct the conract
-    /*
-    function deleteGate(address _gate) external {
-        
-    }
-    */
 
     /**
      * @dev Check into the client and start streaming payment
