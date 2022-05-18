@@ -5,10 +5,8 @@ const daiABI = require("./abis/fDAIABI");
 const deployFramework = require("@superfluid-finance/ethereum-contracts/scripts/deploy-framework");
 const deployTestToken = require("@superfluid-finance/ethereum-contracts/scripts/deploy-test-token");
 const deploySuperToken = require("@superfluid-finance/ethereum-contracts/scripts/deploy-super-token");
-const { parseTransaction } = require("ethers/lib/utils");
 
 const provider = web3;
-
 
 const errorHandler = (err) => {
   if (err) throw err;
@@ -18,23 +16,19 @@ describe("SuperGate", function () {
   let accounts;
   let admin;
   let ant;
-  let beetle;
-
-  let fauxDiax;
+  let dragonfly;
+  let earwig;
 
   let sf;
   let dai;
   let daix;
 
   let pr;
-  let sg;
 
   before(async () => {
     accounts = await ethers.getSigners();
     admin = accounts[0];
     ant = accounts[1];
-    beetle = accounts[2];
-    cricket = accounts[3];
     dragonfly = accounts[4];
     earwig = accounts[5];
 
@@ -114,7 +108,7 @@ describe("SuperGate", function () {
     });
     console.log("daix bal for acct 5: ", daixBal);
 
-    let PR = await ethers.getContractFactory("PaymentReceiver");
+    const PR = await ethers.getContractFactory("PaymentReceiver");
     pr = await PR.deploy(
       sf.settings.config.hostAddress,
       sf.settings.config.cfaV1Address
@@ -129,10 +123,7 @@ describe("SuperGate", function () {
     await (await transaction.exec(admin)).wait();
     await (await transaction.exec(dragonfly)).wait();
     await (await transaction.exec(earwig)).wait();
-    
   });
-
-
 
   it("Should create a flow upon check in and remove upon checkout", async function () {
     let flow = await sf.cfaV1.getFlow({
@@ -142,7 +133,6 @@ describe("SuperGate", function () {
       providerOrSigner: admin,
     });
     expect(flow.flowRate).to.equal("0");
-    
     const antPR = pr.connect(ant);
     await antPR.addGate("bike 1", 1, daix.address);
     const antSGAddress = (await antPR.gatesOwnedBy(ant.address))[0];
@@ -160,7 +150,7 @@ describe("SuperGate", function () {
     });
     expect(flow.flowRate).to.equal("1");
 
-    let checkedIn  = await antSG.isCheckedIn(admin.address);
+    let checkedIn = await antSG.isCheckedIn(admin.address);
     expect(checkedIn).to.equal(true);
 
     await pr.checkOut(antSGAddress);
@@ -319,9 +309,7 @@ describe("SuperGate", function () {
       providerOrSigner: admin,
     });
     expect(flow.flowRate).to.equal("0");
-
   });
-
 
   it("Should checkin/checkout a user when directly creating/deleting a flow to the gate", async function () {
     let flow = await sf.cfaV1.getFlow({
@@ -331,7 +319,7 @@ describe("SuperGate", function () {
       providerOrSigner: admin,
     });
     expect(flow.flowRate).to.equal("0");
-    
+
     const antPR = pr.connect(ant);
     await antPR.addGate("bike 1", 1, daix.address);
     const antSGAddress = (await antPR.gatesOwnedBy(ant.address))[0];
@@ -346,7 +334,6 @@ describe("SuperGate", function () {
       userData: "",
     })).exec(admin);
 
-
     flow = await sf.cfaV1.getFlow({
       superToken: daix.address,
       sender: admin.address,
@@ -355,7 +342,7 @@ describe("SuperGate", function () {
     });
     expect(flow.flowRate).to.equal("1");
 
-    checkedIn  = await antSG.isCheckedIn(admin.address);
+    checkedIn = await antSG.isCheckedIn(admin.address);
     expect(checkedIn).to.equal(true);
 
     await (await sf.cfaV1.deleteFlow({
@@ -375,8 +362,98 @@ describe("SuperGate", function () {
 
     checkedIn  = await antSG.isCheckedIn(admin.address);
     expect(checkedIn).to.equal(false);
+  });
+
+  it("Creating and updating flows works normally", async function () {
+    let flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: ant.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("0");
+
+    await (await sf.cfaV1.createFlow({
+      sender: admin.address,
+      receiver: ant.address,
+      superToken: daix.address,
+      flowRate: "1",
+      userData: "",
+    })).exec(admin);
+    
+    await (await sf.cfaV1.updateFlow({
+      sender: admin.address,
+      receiver: ant.address,
+      superToken: daix.address,
+      flowRate: "2",
+      userData: "",
+    })).exec(admin);
+
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: ant.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("2");
+  });
+
+  it.only("Should remove existing flows if existing flows are updated", async function () {
+    let flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: ant.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("0");
+
+    const antPR = pr.connect(ant);
+    await antPR.addGate("bike 1", 1, daix.address);
+    const antSGAddress = (await antPR.gatesOwnedBy(ant.address))[0];
+
+    const antSG = await ethers.getContractAt("SuperGate", antSGAddress, admin);
+
+    await (await sf.cfaV1.createFlow({
+      sender: admin.address,
+      receiver: antSGAddress,
+      superToken: daix.address,
+      flowRate: "1",
+      userData: "",
+    })).exec(admin);
+
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: antSGAddress,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("1");
+
+    checkedIn = await antSG.isCheckedIn(admin.address);
+    expect(checkedIn).to.equal(true);
+
+    console.log("second flow to be created");
+    
+    await (await sf.cfaV1.updateFlow({
+      sender: admin.address,
+      receiver: antSGAddress,
+      superToken: daix.address,
+      flowRate: "2",
+      userData: "",
+    })).exec(admin);
+    console.log("second flow was created");
+
+    checkedIn = await antSG.isCheckedIn(admin.address);
+    expect(checkedIn).to.equal(false);
 
 
+    flow = await sf.cfaV1.getFlow({
+      superToken: daix.address,
+      sender: admin.address,
+      receiver: antSGAddress,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("2");
   });
 
 
