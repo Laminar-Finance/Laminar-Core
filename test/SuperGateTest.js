@@ -16,6 +16,7 @@ describe("SuperGate", function () {
   let accounts;
   let admin;
   let ant;
+  let beetle;
   let dragonfly;
   let earwig;
 
@@ -29,6 +30,7 @@ describe("SuperGate", function () {
     accounts = await ethers.getSigners();
     admin = accounts[0];
     ant = accounts[1];
+    beetle = accounts[2];
     dragonfly = accounts[4];
     earwig = accounts[5];
 
@@ -373,21 +375,25 @@ describe("SuperGate", function () {
     });
     expect(flow.flowRate).to.equal("0");
 
-    await (await sf.cfaV1.createFlow({
-      sender: admin.address,
-      receiver: ant.address,
-      superToken: daix.address,
-      flowRate: "1",
-      userData: "",
-    })).exec(admin);
-    
-    await (await sf.cfaV1.updateFlow({
-      sender: admin.address,
-      receiver: ant.address,
-      superToken: daix.address,
-      flowRate: "2",
-      userData: "",
-    })).exec(admin);
+    await (
+      await sf.cfaV1.createFlow({
+        sender: admin.address,
+        receiver: ant.address,
+        superToken: daix.address,
+        flowRate: "1",
+        userData: "",
+      })
+    ).exec(admin);
+
+    await (
+      await sf.cfaV1.updateFlow({
+        sender: admin.address,
+        receiver: ant.address,
+        superToken: daix.address,
+        flowRate: "2",
+        userData: "",
+      })
+    ).exec(admin);
 
     flow = await sf.cfaV1.getFlow({
       superToken: daix.address,
@@ -396,67 +402,89 @@ describe("SuperGate", function () {
       providerOrSigner: admin,
     });
     expect(flow.flowRate).to.equal("2");
-  });
 
-  it.only("Should remove existing flows if existing flows are updated", async function () {
-    let flow = await sf.cfaV1.getFlow({
+    await (
+      await sf.cfaV1.deleteFlow({
+        sender: admin.address,
+        receiver: ant.address,
+        superToken: daix.address,
+        userData: "",
+      })
+    ).exec(admin);
+
+    flow = await sf.cfaV1.getFlow({
       superToken: daix.address,
       sender: admin.address,
       receiver: ant.address,
       providerOrSigner: admin,
     });
     expect(flow.flowRate).to.equal("0");
+  });
 
-    const antPR = pr.connect(ant);
-    await antPR.addGate("bike 1", 1, daix.address);
-    const antSGAddress = (await antPR.gatesOwnedBy(ant.address))[0];
-
-    const antSG = await ethers.getContractAt("SuperGate", antSGAddress, admin);
-
-    await (await sf.cfaV1.createFlow({
-      sender: admin.address,
-      receiver: antSGAddress,
+  it("Should check out if existing flows are updated", async function () {
+    let flow = await sf.cfaV1.getFlow({
       superToken: daix.address,
-      flowRate: "1",
-      userData: "",
-    })).exec(admin);
+      sender: admin.address,
+      receiver: beetle.address,
+      providerOrSigner: admin,
+    });
+    expect(flow.flowRate).to.equal("0");
+
+    const beetlePR = pr.connect(beetle);
+    await beetlePR.addGate("bike 1", 2, daix.address);
+    const beetleSGAddress = (await beetlePR.gatesOwnedBy(beetle.address))[0];
+
+    const beetleSG = await ethers.getContractAt(
+      "SuperGate",
+      beetleSGAddress,
+      admin
+    );
+
+    await (
+      await sf.cfaV1.createFlow({
+        sender: admin.address,
+        receiver: beetleSGAddress,
+        superToken: daix.address,
+        flowRate: "2",
+        userData: "",
+      })
+    ).exec(admin);
 
     flow = await sf.cfaV1.getFlow({
       superToken: daix.address,
       sender: admin.address,
-      receiver: antSGAddress,
+      receiver: beetleSGAddress,
       providerOrSigner: admin,
     });
-    expect(flow.flowRate).to.equal("1");
+    expect(flow.flowRate).to.equal("2");
 
-    checkedIn = await antSG.isCheckedIn(admin.address);
+    let checkedIn = await beetleSG.isCheckedIn(admin.address);
     expect(checkedIn).to.equal(true);
 
     console.log("second flow to be created");
-    
-    await (await sf.cfaV1.updateFlow({
-      sender: admin.address,
-      receiver: antSGAddress,
-      superToken: daix.address,
-      flowRate: "2",
-      userData: "",
-    })).exec(admin);
+
+    await (
+      await sf.cfaV1.updateFlow({
+        sender: admin.address,
+        receiver: beetleSGAddress,
+        superToken: daix.address,
+        flowRate: "1",
+        userData: "",
+      })
+    ).exec(admin);
     console.log("second flow was created");
 
-    checkedIn = await antSG.isCheckedIn(admin.address);
+    checkedIn = await beetleSG.isCheckedIn(admin.address);
     expect(checkedIn).to.equal(false);
-
 
     flow = await sf.cfaV1.getFlow({
       superToken: daix.address,
       sender: admin.address,
-      receiver: antSGAddress,
+      receiver: beetleSGAddress,
       providerOrSigner: admin,
     });
     expect(flow.flowRate).to.equal("2");
   });
-
-
 
   it("Should not checkin a user when directly creating a flow with an incorrect flow rate", async function () {
     let flow = await sf.cfaV1.getFlow({
