@@ -1,87 +1,47 @@
-pragma solidity ^0.8.11;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.13;
 
-import "hardhat/console.sol";
+import "./SuperGate.sol";
 import "./IPaymentReceiver.sol";
-import { ISuperfluid, ISuperToken, ISuperApp } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
-import { IConstantFlowAgreementV1 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
-import { Database } from "./Database.sol";
 
-contract PaymentReceiver is IPaymentReceiver, Database {
+import { Counters } from "@openzeppelin/contracts/utils/Counters.sol";
+
+import {
+    IConstantFlowAgreementV1
+} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
+import { ISuperToken, ISuperfluid } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+
+
+contract PaymentReceiver is IPaymentReceiver {
     ISuperfluid private host; // host
-    IConstantFlowAgreementV1 private cfa; // the stored constant flow agreement class 
-    
-    event CheckIn(address checkee, uint256 gateId, uint96 flowRate, ISuperToken token);
-    event CheckOut(address checkee, uint256 gateId);
+    IConstantFlowAgreementV1 private cfa; // the stored constant flow agreement class
+    mapping(address => SuperGate[]) private addressToGate;
+    mapping(SuperGate => address) private gateToAddress;
 
-     constructor(
-        ISuperfluid _host,
-        IConstantFlowAgreementV1 _cfa,
-        ISuperToken _token
-    ) Database(_token) {
-        assert(address(_host) != address(0));
-        assert(address(_cfa) != address(0));
-        
-        host = _host;
-        cfa = _cfa;
-    }
-    
-    function deleteGate(uint256 _gateId) public override {
-        Gate memory gate = getGate(_gateId);
 
-        for (uint256 index = 0; index < gate.activeUsers.length; index++) {
-            address addr = gate.activeUsers[index];
-            _deleteFlow(addr, gate.payee, onlyToken);
-            emit CheckOut(addr , _gateId);
-        } 
-
-        super.deleteGate(_gateId);
+    constructor(address _host, address _cfa){
+        host = ISuperfluid(_host);
+        cfa = IConstantFlowAgreementV1(_cfa);
     }
 
-    function checkIn(uint256 _gateId) external {
-        Gate storage gate = gates[_gateId];
-
-        for (uint256 index = 0; index < gate.activeUsers.length; index++) {
-            require(gate.activeUsers[index] != msg.sender, string(abi.encodePacked("already checked in at: ", gate.name)));
-        }
-
-        _createFlow(gate.payee, gate.flowRate, onlyToken);
-        gate.activeUsers.push(msg.sender);
-        emit CheckIn(msg.sender, _gateId, gate.flowRate, onlyToken);
+    function addGate(string calldata _name, int96 _flowRate, ISuperToken _token) external returns (address){
+        SuperGate newGate = new SuperGate(host, cfa, _name, msg.sender, _token, _flowRate);
+        gateToAddress[newGate] = msg.sender;
+        addressToGate[msg.sender].push(newGate);
+        return address(newGate);
     }
 
-    function checkOut(uint256 _gateId) external {
-        Gate storage gate = gates[_gateId];        
 
-        _deleteFlow(msg.sender, gate.payee, onlyToken);
+    /**
+     * @dev Check into the client and start streaming payment
+     */
+    function checkIn(address superGate) external{
+        SuperGate gate = SuperGate(superGate);
+        require(!gate.isCheckedIn(msg.sender), "Already checked in");
+        ISuperToken token = ISuperToken(gate.acceptedToken());
+        int96 flowRate = int96(gate.flowRate());        
 
-        for (uint256 index = 0; index < gate.activeUsers.length; index++) {
-            if (msg.sender == gate.activeUsers[index]) {
-                gate.activeUsers[index] = gate.activeUsers[gate.activeUsers.length - 1];
-                gate.activeUsers.pop();
-
-                break;
-            }
-        }
-        emit CheckOut(msg.sender, _gateId);
-    }
-
-    function _deleteFlow(address _from, address _to, ISuperToken _token) internal {
-        host.callAgreement(
-            cfa,
-            abi.encodeWithSelector(
-                cfa.deleteFlowByOperator.selector,
-                _token,
-                _from,
-                _to,
-                new bytes(0)
-            ),
-            "0x"
-        );
-    }
-
-    function _createFlow(address _to, uint96 _flowRate, ISuperToken _token) internal {
-        if (_to == address(this) || _to == address(0)) return;
-
+        //May want to add some context instead of bytes 0
         /**
          * @dev flows between two different addreses can only be created by a contract
          * with superfluid operator permissions. 
@@ -90,14 +50,56 @@ contract PaymentReceiver is IPaymentReceiver, Database {
             cfa,
             abi.encodeWithSelector(
                 cfa.createFlowByOperator.selector,
-                _token,
+                token,
                 msg.sender,
-                _to,
-                _flowRate,
+                address(gate),
+                flowRate,
                 new bytes(0)
             ),
             "0x"
         );
     }
 
+    /**
+     * @dev Check out of the client and stop streaming payment
+     */
+    function checkOut(address superGate) external{
+        SuperGate gate = SuperGate(superGate);
+        require(gate.isCheckedIn(msg.sender), "Not checked in");
+
+        //May want to add some context instead of bytes 0
+        /**
+         * @dev flows between two different addreses can only be created by a contract
+         * with superfluid operator permissions. 
+         */
+        host.callAgreement(
+            cfa,
+            abi.encodeWithSelector(
+                cfa.deleteFlowByOperator.selector,
+                gate.acceptedToken(),
+                msg.sender,
+                address(gate),
+                new bytes(0)
+            ),
+            "0x"
+        );
+    }
+
+
+    /*
+    * ------------------------------------------------------------
+    * External view functions
+    * ------------------------------------------------------------
+    */
+
+    function gatesOwnedBy(address _owner) external view returns (address[] memory result){
+        result = new address[](addressToGate[_owner].length);
+        for(uint i = 0; i < addressToGate[_owner].length; i++){
+            result[i] = address(addressToGate[_owner][i]);
+        }
+    }
+
+    function getOwner(address _gate) external view returns (address){
+        return gateToAddress[SuperGate(_gate)];
+    }
 }
